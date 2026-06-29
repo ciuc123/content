@@ -1,63 +1,15 @@
 [
   {
-    "title": "What 10 Years of Software Engineering Taught Me That Bootcamps Don't",
-    "why_it_matters": "Shares practical lessons learned through real-world experience that can help developers avoid common mistakes.",
-    "virality_score": 8,
-    "business_score": 8
-  },
-  {
-    "title": "How I Use AI to Save 10 Hours Every Week as a Software Engineer",
-    "why_it_matters": "Developers are actively looking for practical AI workflows that improve productivity.",
-    "virality_score": 10,
-    "business_score": 9,
+    "title": "AI in DevOps",
+    "why_it_matters": "DevOps teams can save time",
+    "virality_score": 7,
+    "business_score": 8,
     "status": "selected"
   },
   {
-    "title": "Building a SaaS MVP in 30 Days: Every Decision Explained",
-    "why_it_matters": "Provides a transparent roadmap from idea to launch, helping aspiring founders ship faster.",
-    "virality_score": 9,
-    "business_score": 10
-  },
-  {
-    "title": "The Hidden Costs of Bad API Design (and How to Avoid Them)",
-    "why_it_matters": "API design affects scalability, developer experience, and long-term maintenance costs.",
-    "virality_score": 7,
-    "business_score": 9
-  },
-  {
-    "title": "From Feature Request to Production: A Developer's End-to-End Workflow",
-    "why_it_matters": "Demonstrates how experienced engineers manage delivery from planning to deployment.",
-    "virality_score": 7,
-    "business_score": 8
-  },
-  {
-    "title": "Docker Mistakes That Slow Down Your Development Environment",
-    "why_it_matters": "Many developers struggle with inefficient local setups that reduce productivity.",
-    "virality_score": 8,
-    "business_score": 8
-  },
-  {
-    "title": "Why Side Projects Fail—and How to Build One People Actually Pay For",
-    "why_it_matters": "Focuses on validating ideas before investing months of development time.",
-    "virality_score": 9,
-    "business_score": 10
-  },
-  {
-    "title": "A Senior Engineer Reviews 20 Common Junior Developer Mistakes",
-    "why_it_matters": "Offers actionable advice that accelerates career growth for newer developers.",
-    "virality_score": 9,
-    "business_score": 7
-  },
-  {
-    "title": "My Complete Productivity Stack as a Modern Software Engineer",
-    "why_it_matters": "Developers enjoy discovering tools and workflows that improve focus and efficiency.",
-    "virality_score": 8,
-    "business_score": 8
-  },
-  {
-    "title": "Choosing Between Laravel, Symfony, and Spring Boot in 2026",
-    "why_it_matters": "Framework comparisons help teams make informed technology decisions for new projects.",
-    "virality_score": 8,
+    "title": "Kubernetes Best Practices",
+    "why_it_matters": "Improve cluster efficiency",
+    "virality_score": 6,
     "business_score": 9
   }
 ]

@@ -1,0 +1,14 @@
+[
+  {
+    "title": "Idea 1",
+    "why_it_matters": "Reason 1",
+    "virality_score": 5,
+    "business_score": 6
+  },
+  {
+    "title": "Idea 2",
+    "why_it_matters": "Reason 2",
+    "virality_score": 7,
+    "business_score": 8
+  }
+]
