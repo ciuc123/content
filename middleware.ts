@@ -11,7 +11,8 @@ export default clerkMiddleware((auth, req) => {
   // Skip auth protection in dev mode if DEV_AUTH_DISABLED is true
   const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
   
-  if (isProtectedRoute(req) && !devAuthDisabled) {
+  // Only call protect() if not in dev mode and route is protected
+  if (!devAuthDisabled && isProtectedRoute(req)) {
     auth().protect()
   }
 })
