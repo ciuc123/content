@@ -11,7 +11,9 @@
     "test": "jest --verbose --passWithNoTests"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.5.10",
     "@octokit/rest": "20.0.0",
+    "@supabase/supabase-js": "^2.108.2",
     "next": "latest",
     "pg": "8.11.1",
     "react": "18.2.0",
