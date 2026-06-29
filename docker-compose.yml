@@ -12,16 +12,40 @@ services:
   web:
     build: .
     # Ensure dependencies are installed on container start (works well with bind mounts)
-    command: sh -c "npm install && npm run dev"
+    # If a copilot binary has been downloaded into the copilot_bin volume, symlink it into /usr/local/bin
+    command: sh -c "if [ -f /opt/copilot/copilot ]; then ln -sf /opt/copilot/copilot /usr/local/bin/copilot || true; fi && npm install && npm run dev"
     env_file: .env.local
     volumes:
       - .:/usr/src/app
+      - node_modules:/usr/src_app/node_modules
       - node_modules:/usr/src/app/node_modules
+      - copilot_bin:/opt/copilot:ro
     ports:
       - "3000:3000"
     depends_on:
       - db
 
+  copilot_boot:
+    image: curlimages/curl:8.1.2
+    entrypoint: ["sh","-c"]
+    command: |
+      set -eux;
+      # Try several likely asset names and save to /work/copilot
+      for file in copilot-linux-amd64 copilot-linux-x86_64 copilot-linux copilot; do
+        url="https://github.com/github/copilot-cli/releases/latest/download/$file";
+        echo "Trying $url";
+        if curl -fSL "$url" -o /work/copilot; then
+          chmod +x /work/copilot;
+          echo "Downloaded copilot to /work/copilot";
+          exit 0;
+        fi;
+      done;
+      echo "Failed to download copilot binary";
+      exit 1
+    volumes:
+      - copilot_bin:/work
+
 volumes:
   pgdata:
   node_modules:
+  copilot_bin:
