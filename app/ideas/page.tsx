@@ -97,7 +97,7 @@ export default function IdeasPage() {
                         const j = await r.json()
                         if (!r.ok) throw new Error(j?.error || 'Failed')
                         // navigate to research page
-                        window.location.href = '/publish'
+                        window.location.href = '/ideas/research'
                       } catch (err: any) {
                         setMessage(String(err))
                       }
