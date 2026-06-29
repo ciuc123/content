@@ -18,7 +18,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       }
       return res.status(200).json({ ok: true, data })
     } catch (err: any) {
-      return res.status(500).json({ error: String(err) })
+      return res.status(500).json({ error: St1ring(err) })
     }
   }
 

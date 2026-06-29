@@ -1,2 +1,9 @@
-[]
-
+[
+  {
+    "title": "Test idea",
+    "why_it_matters": "It matters",
+    "virality_score": 5,
+    "business_score": 8,
+    "status": "selected"
+  }
+]
