@@ -23,6 +23,35 @@ The application is for a single user only.
 
 ---
 
+## MVP Quick Start (minimal, Docker dev)
+
+This README contains the full specification. To get a working MVP quickly (few hours), follow the minimal "Quick Start" below.
+
+Prerequisites: Docker & Docker Compose (or WSL with Docker), Git
+
+1) Copy `.env.example` and fill the minimal vars (or rely on defaults):
+
+```bash
+cp .env.example .env.local
+# edit .env.local and set GITHUB_TARGET_REPO and GITHUB_TOKEN if you want to test PR creation
+```
+
+2) Start services (Postgres + web dev container):
+
+```bash
+docker compose up --build
+```
+
+3) Open http://localhost:3000 and use the simple UI.
+
+Dev tips:
+
+- To bypass auth during early development set `DEV_AUTH_DISABLED=true` (already default in `.env.example`).
+- For local testing of publishing without touching GitHub set `GITHUB_MOCK=true` (writes to `content/posts/` locally).
+- Use Copilot manually: paste Copilot output into the input textareas in the app (no external AI key needed).
+
+---
+
 # Tech Stack
 
 ## Frontend
