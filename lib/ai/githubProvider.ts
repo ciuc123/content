@@ -5,23 +5,33 @@ const exec = promisify(cpExec)
 
 export class GitHubModelsProvider implements AIProvider {
   async generate(prompt: string, context?: string) {
-    // Prefer explicit CLI binary if set
-    const cliBin = process.env.COPILOT_CLI_BIN || 'npx @githubnext/copilot-cli'
     const fullPrompt = context ? `${prompt}\n\nContext:\n${context}` : prompt
-
     // Escape double quotes
     const safePrompt = fullPrompt.replace(/"/g, '\\"')
 
-    try {
-      // Call the Copilot CLI via npx (will download if not installed) or use installed binary
-      const { stdout, stderr } = await exec(`${cliBin} "${safePrompt}"`)
-      if (stderr) console.error('copilot-stderr:', stderr)
-      return (stdout || '').toString().trim()
-    } catch (err: any) {
-      throw new Error(
-        'GitHub Copilot CLI invocation failed. Install the CLI with `npm i -g @githubnext/copilot-cli` or set COPILOT_CLI_BIN to a usable command. Original error: ' + String(err)
-      )
+    // Try a set of possible CLI invocations. The container image attempts to install
+    // a `copilot` binary. You can also set COPILOT_CLI_BIN to an explicit command.
+    const candidates: string[] = []
+    if (process.env.COPILOT_CLI_BIN) candidates.push(process.env.COPILOT_CLI_BIN)
+    candidates.push('copilot')
+    candidates.push('npx @githubnext/copilot-cli')
+
+    let lastErr: any = null
+    for (const cmd of candidates) {
+      try {
+        const { stdout, stderr } = await exec(`${cmd} "${safePrompt}"`)
+        if (stderr) console.error('copilot-stderr:', stderr)
+        const out = (stdout || '').toString().trim()
+        if (out) return out
+      } catch (err: any) {
+        lastErr = err
+        // try next candidate
+      }
     }
+
+    throw new Error(
+      'GitHub Copilot CLI invocation failed. Tried: ' + candidates.join(', ') +
+      '. Set COPILOT_CLI_BIN to a usable command or use AI_PROVIDER=manual. Last error: ' + String(lastErr)
+    )
   }
 }
-

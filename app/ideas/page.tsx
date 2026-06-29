@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 type Idea = {
   title?: string
@@ -11,6 +12,7 @@ type Idea = {
 }
 
 export default function IdeasPage() {
+  const router = useRouter()
   const [ideas, setIdeas] = useState<Idea[]>([])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -96,8 +98,8 @@ export default function IdeasPage() {
                         })
                         const j = await r.json()
                         if (!r.ok) throw new Error(j?.error || 'Failed')
-                        // navigate to research page
-                        window.location.href = '/ideas/research'
+                        // navigate to research page using Next router
+                        router.push('/ideas/research')
                       } catch (err: any) {
                         setMessage(String(err))
                       }

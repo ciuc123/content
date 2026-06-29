@@ -1,3 +1,42 @@
-.idea
-.env.*
+# IDEs
+.idea/
+.vscode/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Next.js
+.next/
+.next/**
+
+# Production
+build/
+dist/
+
+# Env
+.env
+.env.local
+.env.*.local
 !.env.example
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Local data and generated content
+data/
+content/posts/
+
+# Misc
+coverage/
