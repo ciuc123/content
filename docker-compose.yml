@@ -19,6 +19,8 @@ services:
       - .:/usr/src/app
       - node_modules:/usr/src_app/node_modules
       - node_modules:/usr/src/app/node_modules
+      # Optional: mount a host copilot binary into the container (set COPILOT_BIN_HOST in .env.local)
+      - ${COPILOT_BIN_HOST:-}:/opt/copilot/copilot:ro
       - copilot_bin:/opt/copilot:ro
     ports:
       - "3000:3000"
