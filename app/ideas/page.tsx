@@ -75,6 +75,7 @@ export default function IdeasPage() {
               <th className="border-b p-2">Why it matters</th>
               <th className="border-b p-2">Virality</th>
               <th className="border-b p-2">Business</th>
+              <th className="border-b p-2">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -84,6 +85,28 @@ export default function IdeasPage() {
                 <td className="p-2 border-b">{idea.why_it_matters || '-'}</td>
                 <td className="p-2 border-b">{idea.virality_score ?? '-'}</td>
                 <td className="p-2 border-b">{idea.business_score ?? '-'}</td>
+                <td className="p-2 border-b">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const r = await fetch('/api/ideas/select', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ index: idx })
+                        })
+                        const j = await r.json()
+                        if (!r.ok) throw new Error(j?.error || 'Failed')
+                        // navigate to research page
+                        window.location.href = '/publish'
+                      } catch (err: any) {
+                        setMessage(String(err))
+                      }
+                    }}
+                    className="px-3 py-1 bg-yellow-500 text-black rounded"
+                  >
+                    Take Further
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -92,4 +115,3 @@ export default function IdeasPage() {
     </div>
   )
 }
-
