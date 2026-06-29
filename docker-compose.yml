@@ -8,7 +8,6 @@ services:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-
   web:
     build: .
     # Ensure dependencies are installed on container start (works well with bind mounts)
@@ -17,16 +16,12 @@ services:
     env_file: .env.local
     volumes:
       - .:/usr/src/app
-      - node_modules:/usr/src_app/node_modules
       - node_modules:/usr/src/app/node_modules
-      # Optional: mount a host copilot binary into the container (set COPILOT_BIN_HOST in .env.local)
-      - ${COPILOT_BIN_HOST:-}:/opt/copilot/copilot:ro
       - copilot_bin:/opt/copilot:ro
     ports:
       - "3000:3000"
     depends_on:
       - db
-
   copilot_boot:
     image: curlimages/curl:8.1.2
     entrypoint: ["sh","-c"]
@@ -38,15 +33,13 @@ services:
         echo "Trying $url";
         if curl -fSL "$url" -o /work/copilot; then
           chmod +x /work/copilot;
-          echo "Downloaded copilot to /work/copilot";
           exit 0;
         fi;
       done;
-      echo "Failed to download copilot binary";
-      exit 1
+      echo "No copilot binary found. Using manual provider instead."
     volumes:
       - copilot_bin:/work
-
+    restart: "no"
 volumes:
   pgdata:
   node_modules:
