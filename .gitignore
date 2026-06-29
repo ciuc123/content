@@ -40,3 +40,6 @@ content/posts/
 
 # Misc
 coverage/
+
+# clerk configuration (can include secrets)
+/.clerk/

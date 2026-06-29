@@ -15,7 +15,11 @@ type ResponseData = {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
-  const { userId } = auth()
+  const { userId: clerkUserId } = auth()
+
+  // In dev mode with auth disabled, use a default dev user ID
+  const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
+  const userId = clerkUserId || (devAuthDisabled ? 'dev-user' : null)
 
   if (USE_SUPABASE && !userId) {
     return res.status(401).json({ error: 'Unauthorized' })

@@ -16,7 +16,11 @@ type ResponseData = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   // Get user ID from Clerk
-  const { userId } = auth()
+  const { userId: clerkUserId } = auth()
+  
+  // In dev mode with auth disabled, use a default dev user ID
+  const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
+  const userId = clerkUserId || (devAuthDisabled ? 'dev-user' : null)
 
   // If Supabase is enabled, require authentication
   if (USE_SUPABASE && !userId) {

@@ -8,7 +8,12 @@ const isProtectedRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware((auth, req) => {
-  if (isProtectedRoute(req)) auth().protect()
+  // Skip auth protection in dev mode if DEV_AUTH_DISABLED is true
+  const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
+  
+  if (isProtectedRoute(req) && !devAuthDisabled) {
+    auth().protect()
+  }
 })
 
 export const config = {
