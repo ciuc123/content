@@ -559,3 +559,23 @@ Total time:
 Less than 10 minutes.
 
 The application should feel like a focused content production tool rather than a generic AI writing platform.
+
+## Development cycle (agent / human)
+
+This project is developed in small, verifiable increments. Each increment follows the pattern:
+
+1. Agent implements one small task (1-2 hours) and opens or creates a local commit.
+2. Human reviews the change in the running app or code, performs a local test, and gives approval or requests fixes.
+3. Agent addresses feedback, updates code, and commits again.
+4. Move to the next task.
+
+Suggested task granularity examples:
+
+- Scaffold project, Docker, AI provider (this commit)
+- Implement ideas import UI (this commit)
+- Implement research page + manual paste inputs
+- Implement generated content review UI
+- Implement publish endpoint and PR creation (mock first, real next)
+- Replace file-backed storage with Supabase
+
+When implementing, keep each change small and commit frequently with clear messages (e.g. `feat: add X`, `fix: handle Y`).
