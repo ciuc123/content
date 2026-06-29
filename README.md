@@ -17,6 +17,7 @@ open http://localhost:3000
 
 ## Workflow
 
+### Manual Mode (Default)
 The app guides you through 4 simple steps:
 
 1. **Generate Ideas** - Ask Copilot to generate content ideas (JSON format)
@@ -25,6 +26,19 @@ The app guides you through 4 simple steps:
 4. **Publish** - Create a GitHub PR on your blog repository
 
 **Total time: ~10-15 minutes per post**
+
+### Automated Mode (AI Agent)
+Or let the AI Agent handle everything automatically:
+
+```bash
+curl -X POST http://localhost:3000/api/ai/agent \
+  -H "Content-Type: application/json" \
+  -d '{"action": "fullWorkflow", "topic": "DevOps", "depth": "medium"}'
+```
+
+**Total time: ~30-80 seconds per post** (depending on AI provider)
+
+See [AI Agent Guide](./AI_AGENT_GUIDE.md) for detailed documentation.
 
 ## Key Features
 
