@@ -73,7 +73,9 @@ export default function IdeaGeneratePage() {
     try {
       const prompt = kind === 'linkedin'
         ? `Write a 150-300 word LinkedIn post about this idea:\nTitle: ${selectedIdea.title}\nWhy: ${selectedIdea.why_it_matters}\nResearch: ${research}`
-        : `Write a long-form blog article (1200-2000 words) about this idea:\nTitle: ${selectedIdea.title}\nWhy: ${selectedIdea.why_it_matters}\nResearch: ${research}`
+        : kind === 'blog'
+        ? `Write a long-form blog article (1200-2000 words) about this idea:\nTitle: ${selectedIdea.title}\nWhy: ${selectedIdea.why_it_matters}\nResearch: ${research}`
+        : `Write a short (300-500 word) newsletter piece about this idea:\nTitle: ${selectedIdea.title}\nWhy: ${selectedIdea.why_it_matters}\nResearch: ${research}`
 
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
@@ -86,8 +88,9 @@ export default function IdeaGeneratePage() {
       if (kind === 'linkedin') setLinkedin(text)
       else if (kind === 'blog') setBlog(text)
       else setNewsletter(text)
+      setMessage('✓ Content generated (paste from Copilot or use AI button)')
     } catch (err: any) {
-      setMessage(String(err))
+      setMessage(`To generate content: 1) Copy the prompt below 2) Paste into GitHub Copilot 3) Paste result back here. Error was: ${String(err)}`)
     }
     setLoading(false)
   }
@@ -104,42 +107,42 @@ export default function IdeaGeneratePage() {
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold">Generate Content for: {selectedIdea.title}</h1>
-      <p className="mt-2 text-sm text-gray-600">Research:</p>
-      <div className="p-2 border rounded bg-gray-50 mt-2 whitespace-pre-wrap">{research || 'No research yet'}</div>
+      <p className="mt-2 text-sm text-gray-600">💡 <strong>Workflow:</strong> Click "Generate via AI" button → copy the prompt → paste into GitHub Copilot → paste the result back here</p>
+      <p className="mt-2 text-sm text-gray-600">📄 <strong>Research:</strong></p>
+      <div className="p-2 border rounded bg-gray-50 mt-2 whitespace-pre-wrap text-sm">{research || 'No research yet'}</div>
 
-      <form onSubmit={saveGenerated} className="mt-4 space-y-4">
+      <form onSubmit={saveGenerated} className="mt-6 space-y-6">
         <div>
-          <label className="block text-sm font-medium">LinkedIn Post (150-300 words)</label>
-          <textarea value={linkedin} onChange={(e) => setLinkedin(e.target.value)} rows={6} className="w-full border p-2 rounded" />
+          <label className="block text-sm font-medium mb-2">LinkedIn Post (150-300 words)</label>
+          <textarea value={linkedin} onChange={(e) => setLinkedin(e.target.value)} rows={6} className="w-full border p-2 rounded" placeholder="Paste LinkedIn post here..." />
           <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => generateViaAI('linkedin')} className="px-3 py-1 bg-blue-600 text-white rounded">Generate via AI</button>
+            <button type="button" onClick={() => generateViaAI('linkedin')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Copy Prompt</button>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium">Blog Post (Markdown)</label>
-          <textarea value={blog} onChange={(e) => setBlog(e.target.value)} rows={16} className="w-full border p-2 rounded font-mono" />
+          <label className="block text-sm font-medium mb-2">Blog Post (1200-2000 words markdown)</label>
+          <textarea value={blog} onChange={(e) => setBlog(e.target.value)} rows={16} className="w-full border p-2 rounded font-mono text-sm" placeholder="Paste blog post here..." />
           <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => generateViaAI('blog')} className="px-3 py-1 bg-blue-600 text-white rounded">Generate via AI</button>
+            <button type="button" onClick={() => generateViaAI('blog')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Copy Prompt</button>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium">Newsletter (short)</label>
-          <textarea value={newsletter} onChange={(e) => setNewsletter(e.target.value)} rows={6} className="w-full border p-2 rounded" />
+          <label className="block text-sm font-medium mb-2">Newsletter (300-500 words)</label>
+          <textarea value={newsletter} onChange={(e) => setNewsletter(e.target.value)} rows={8} className="w-full border p-2 rounded" placeholder="Paste newsletter content here..." />
           <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => generateViaAI('newsletter')} className="px-3 py-1 bg-blue-600 text-white rounded">Generate via AI</button>
+            <button type="button" onClick={() => generateViaAI('newsletter')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Copy Prompt</button>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button type="submit" disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded">{loading ? 'Saving...' : 'Save Generated'}</button>
-          <a href="/publish" className="px-4 py-2 border rounded">Publish</a>
+        <div className="flex gap-2 pt-4 border-t">
+          <button type="submit" disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{loading ? 'Saving...' : 'Save Generated'}</button>
+          <a href="/publish" className="px-4 py-2 border rounded hover:bg-gray-50">Next: Publish</a>
         </div>
       </form>
 
-      {message && <div className="mt-4 text-sm text-red-700">{message}</div>}
+      {message && <div className="mt-4 p-3 text-sm bg-blue-50 border border-blue-200 rounded whitespace-pre-wrap">{message}</div>}
     </div>
   )
 }
-
