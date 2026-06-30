@@ -1,5 +1,6 @@
 import { AIProvider } from './ai'
-import { getAIProvider } from './providerFactory'
+import { GitHubModelsProvider } from './githubProvider'
+import { getAIProvider as getBaseProvider } from './providerFactory'
 
 /**
  * AI Agent Provider
@@ -13,9 +14,17 @@ export class AgentProvider implements AIProvider {
   private baseProvider: AIProvider
 
   constructor(apiKey?: string) {
-    // Use the configured provider (OpenAI, GitHub CLI, or Manual)
-    // Pass user's API key if provided
-    this.baseProvider = getAIProvider(apiKey)
+    // Detect if apiKey is a GitHub token
+    const isGitHubToken = apiKey && (apiKey.startsWith('gh') || apiKey.startsWith('gho'))
+
+    if (isGitHubToken) {
+      // Use GitHub provider with the token
+      this.baseProvider = new GitHubModelsProvider(apiKey)
+    } else {
+      // Use the configured provider (OpenAI, GitHub CLI, or Manual)
+      // Pass user's API key if provided
+      this.baseProvider = getBaseProvider(apiKey)
+    }
   }
 
   /**
