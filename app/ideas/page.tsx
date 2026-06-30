@@ -114,13 +114,13 @@ export default function IdeasPage() {
          throw new Error('Input must be a JSON array')
        }
 
-       if (isSignedIn) {
-         // Save to API (Supabase)
-         const res = await fetch('/api/ideas', {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ payload: text })
-         })
+        if (isSignedIn) {
+          // Save to API (Supabase)
+          const res = await fetch('/api/ideas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payload: newIdeas })
+          })
 
          // Parse response safely
          let json: any = {}

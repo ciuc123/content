@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuth } from '@clerk/nextjs/server'
-import { supabaseHelpers } from '../../../lib/supabase'
+import { supabaseHelpers, supabaseServer } from '../../../lib/supabase'
 
 type ResponseData = {
   ideas?: any[]
@@ -19,10 +19,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(401).json({ error: 'Sign in to sync data' })
     }
     try {
-      const { data, error } = await supabaseHelpers.getIdeas(userId)
-      if (error) return res.status(500).json({ error: error.message })
+      // Use server-side Supabase client for secure server operations
+      const supabaseAdmin = supabaseServer()
+      const { data, error } = await supabaseAdmin
+        .from('ideas')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) {
+        console.error('Failed to fetch ideas:', error)
+        return res.status(500).json({ error: error.message })
+      }
       return res.status(200).json({ ideas: data || [] })
     } catch (err: any) {
+      console.error('Ideas GET error:', err)
       return res.status(500).json({ error: String(err) })
     }
   }
@@ -49,19 +60,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(400).json({ error: 'payload must be an array' })
       }
 
+      // Use server-side Supabase client to bypass RLS and insert ideas
+      const supabaseAdmin = supabaseServer()
       let count = 0
       for (const idea of ideas) {
-        const { error } = await supabaseHelpers.createIdea(userId, {
-          title: idea.title,
-          why_it_matters: idea.why_it_matters,
-          virality_score: idea.virality_score,
-          business_score: idea.business_score,
-        })
-        if (!error) count++
+        const { data, error } = await supabaseAdmin
+          .from('ideas')
+          .insert({
+            user_id: userId,
+            title: idea.title,
+            why_it_matters: idea.why_it_matters,
+            virality_score: idea.virality_score,
+            business_score: idea.business_score,
+          })
+          .select()
+        
+        if (error) {
+          console.error(`Failed to create idea "${idea.title}":`, error)
+        } else {
+          count++
+        }
       }
 
       return res.status(200).json({ ok: true, count })
     } catch (err: any) {
+      console.error('Ideas POST error:', err)
       return res.status(500).json({ error: String(err) })
     }
   }
