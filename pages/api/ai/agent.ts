@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { getAgentProvider } from '../../lib/ai/agentProvider'
+import { getAgentProvider } from '../../../lib/ai/agentProvider'
 import fs from 'fs'
 import path from 'path'
 

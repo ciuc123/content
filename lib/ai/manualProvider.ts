@@ -12,5 +12,3 @@ export class ManualProvider implements AIProvider {
     )
   }
 }
-
-22

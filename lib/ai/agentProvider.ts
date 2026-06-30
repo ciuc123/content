@@ -168,9 +168,11 @@ Output ONLY the newsletter article content.`
   }
 
   /**
-   * Streaming support (if base provider supports it)
+   * Streaming support (delegates to base provider when available).
+   * Declared without `?` because optional method syntax is only valid in
+   * interfaces/abstract classes; a concrete class must provide a full definition.
    */
-  async stream?(
+  async stream(
     prompt: string,
     context: string | undefined,
     onChunk: (chunk: string) => void,

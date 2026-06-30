@@ -16,8 +16,8 @@ type ResponseData = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   // Get user ID from Clerk
-  const { userId: clerkUserId } = auth()
-  
+  const { userId: clerkUserId } = await auth()
+
   // In dev mode with auth disabled, use a default dev user ID
   const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
   const userId = clerkUserId || (devAuthDisabled ? 'dev-user' : null)

@@ -1,4 +1,3 @@
-import {ClerkProvider, SignInButton, SignUpButton, SignedOut, SignedIn, UserButton} from "@clerk/nextjs";
 import './globals.css'
 
 export const metadata = {

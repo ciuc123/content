@@ -15,7 +15,7 @@ type ResponseData = {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
-  const { userId: clerkUserId } = auth()
+  const { userId: clerkUserId } = await auth()
 
   // In dev mode with auth disabled, use a default dev user ID
   const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
@@ -91,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           blog_post,
           newsletter_post,
           created_at: new Date().toISOString(),
-        }
+        } as any
         data.push(entry)
         fs.mkdirSync(path.dirname(dataFile), { recursive: true })
         fs.writeFileSync(dataFile, JSON.stringify(data, null, 2))
