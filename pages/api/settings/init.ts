@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { auth } from '@clerk/nextjs'
+import { getAuth } from '@clerk/nextjs/server'
 import { supabaseServer } from '../../../lib/supabase'
 
 interface InitUserResponse {
@@ -17,7 +17,7 @@ export default async function handler(
   }
 
   try {
-    const { userId } = auth()
+    const { userId } = getAuth(req)
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' })
     }
@@ -31,9 +31,18 @@ export default async function handler(
       .eq('clerk_id', userId)
       .single()
 
-    // User already exists - nothing to do
+    // If user exists, return success
     if (existingUser) {
       return res.status(200).json({ success: true })
+    }
+
+    // .single() returns PGRST116 error when no rows found - this is expected
+    if (fetchError && fetchError.code === 'PGRST116') {
+      // User doesn't exist, proceed to create
+    } else if (fetchError) {
+      // Unexpected database error
+      console.error('Error checking user:', fetchError)
+      return res.status(500).json({ error: 'Failed to check user record' })
     }
 
     // Create new user record
@@ -52,7 +61,7 @@ export default async function handler(
 
     return res.status(200).json({ success: true })
   } catch (err: any) {
-    console.error('Init user error:', err)
+    console.error('Init user error:', err?.message || err)
     return res.status(500).json({ error: 'Internal server error' })
   }
 }

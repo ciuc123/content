@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { auth } from '@clerk/nextjs/server'
+import { getAuth } from '@clerk/nextjs/server'
 import fs from 'fs'
 import path from 'path'
 import { supabase, type GeneratedContent } from '../../../lib/supabase'
@@ -15,7 +15,7 @@ type ResponseData = {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
-  const { userId: clerkUserId } = await auth()
+  const { userId: clerkUserId } = getAuth(req)
 
   // In dev mode with auth disabled, use a default dev user ID
   const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
