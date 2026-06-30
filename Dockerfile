@@ -36,11 +36,28 @@ RUN set -eux; \
 # Copy rest of the application
 COPY . .
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/src/app/
-RUN chmod +x /usr/src/app/docker-entrypoint.sh
-
 ENV NODE_ENV=development
 EXPOSE 3000
 
-ENTRYPOINT ["/usr/src/app/docker-entrypoint.sh"]
+# Startup command - extract GitHub token and start the app
+CMD sh -c '\
+  echo "========================================="; \
+  echo "Starting Ideas Content Engine"; \
+  echo "========================================="; \
+  if [ -f /opt/copilot/copilot ]; then \
+    ln -sf /opt/copilot/copilot /usr/local/bin/copilot || true; \
+    echo "✓ Copilot CLI linked"; \
+  fi; \
+  if [ -f /root/.config/gh/hosts.yml ]; then \
+    echo "✓ Found gh config, extracting token..."; \
+    TOKEN=$(grep -A2 "github.com:" /root/.config/gh/hosts.yml | grep "oauth_token:" | awk "{print \$2}" | tr -d "\n" 2>/dev/null || true); \
+    if [ -n "$TOKEN" ]; then \
+      export COPILOT_GITHUB_TOKEN="$TOKEN"; \
+      echo "✓ COPILOT_GITHUB_TOKEN set"; \
+    fi; \
+  else \
+    echo "⚠️  No gh config found"; \
+  fi; \
+  echo "========================================="; \
+  npm install && npm run dev; \
+'
