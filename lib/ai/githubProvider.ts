@@ -1,32 +1,50 @@
 import { AIProvider } from './ai'
-import { exec as cpExec } from 'child_process'
-import { promisify } from 'util'
-const exec = promisify(cpExec)
+import { spawn } from 'child_process'
 
 export class GitHubModelsProvider implements AIProvider {
-  async generate(prompt: string, context?: string) {
+  async generate(prompt: string, context?: string): Promise<string> {
     const fullPrompt = context ? `${prompt}\n\nContext:\n${context}` : prompt
-    // Escape double quotes
-    const safePrompt = fullPrompt.replace(/"/g, '\\"')
-
-    // Use the copilot binary from copilot_boot container
-    // The copilot_boot container downloads and extracts the binary into /opt/copilot/
-    // which is mounted as a shared volume and linked to /usr/local/bin/copilot
     const cmd = process.env.COPILOT_CLI_BIN || '/usr/local/bin/copilot'
 
-    try {
-      // Use -p flag for prompt mode in copilot CLI
-      const { stdout, stderr } = await exec(`${cmd} -p "${safePrompt}"`)
-      if (stderr) console.error('copilot-stderr:', stderr)
-      const out = (stdout || '').toString().trim()
-      if (out) return out
+    return new Promise((resolve, reject) => {
+      // Use spawn instead of exec for safer argument passing
+      // Arguments are passed as array - shell cannot interpret them as code
+      const child = spawn(cmd, ['-p', fullPrompt], {
+        timeout: 60000,
+        stdio: ['ignore', 'pipe', 'pipe']
+      })
 
-      throw new Error('No output from copilot CLI')
-    } catch (err: any) {
-      throw new Error(
-        `Copilot CLI failed at ${cmd}. Ensure copilot_boot container completed successfully. ` +
-        `Check docker logs: docker compose logs copilot_boot. Error: ${String(err)}`
-      )
-    }
+      let stdout = ''
+      let stderr = ''
+
+      child.stdout?.on('data', (data) => {
+        stdout += data.toString()
+      })
+
+      child.stderr?.on('data', (data) => {
+        stderr += data.toString()
+        console.error('copilot-stderr:', data.toString())
+      })
+
+      child.on('error', (err) => {
+        reject(new Error(
+          `Copilot CLI failed at ${cmd}. Ensure copilot_boot container completed successfully. ` +
+          `Check docker logs: docker compose logs copilot_boot. Error: ${String(err)}`
+        ))
+      })
+
+      child.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(
+            `Copilot CLI failed at ${cmd}. Ensure copilot_boot container completed successfully. ` +
+            `Check docker logs: docker compose logs copilot_boot. Error: ${stderr || stdout}`
+          ))
+        } else if (stdout.trim()) {
+          resolve(stdout.trim())
+        } else {
+          reject(new Error('No output from copilot CLI'))
+        }
+      })
+    })
   }
 }
