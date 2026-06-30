@@ -21,7 +21,10 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - db
+      db:
+        condition: service_started
+      copilot_boot:
+        condition: service_completed_successfully
   copilot_boot:
     image: curlimages/curl:8.1.2
     entrypoint: ["sh","-c"]
