@@ -240,16 +240,12 @@ export default function IdeasPage() {
       </div>
 
       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
-        <p className="text-sm font-medium mb-2">💭 Manual Alternative:</p>
-        <p className="text-sm mb-2">Ask GitHub Copilot in the web interface to generate 10 content ideas:</p>
-        <code className="text-xs bg-white p-2 rounded block mb-2 overflow-x-auto">
-          Generate 10 unique content ideas for a software engineer's blog. For each idea, provide: title, why_it_matters, virality_score (1-10), business_score (1-10). Output as JSON array.
-        </code>
-        <p className="text-sm">Then copy the JSON output and paste it below.</p>
+        <p className="text-sm font-medium mb-2">📋 Or Import Pre-Made Ideas:</p>
+        <p className="text-sm mb-2">If you have ideas in JSON format from another source, paste them below:</p>
       </div>
 
       <form onSubmit={handleSubmit} className="mt-4">
-        <label className="block text-sm font-medium mb-2">Paste JSON Array of Ideas</label>
+        <label className="block text-sm font-medium mb-2">Import JSON Array of Ideas</label>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
