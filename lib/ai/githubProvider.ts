@@ -19,7 +19,8 @@ export class GitHubModelsProvider implements AIProvider {
     let lastErr: any = null
     for (const cmd of candidates) {
       try {
-        const { stdout, stderr } = await exec(`${cmd} "${safePrompt}"`)
+        // Use -p flag for prompt mode in copilot CLI
+        const { stdout, stderr } = await exec(`${cmd} -p "${safePrompt}"`)
         if (stderr) console.error('copilot-stderr:', stderr)
         const out = (stdout || '').toString().trim()
         if (out) return out

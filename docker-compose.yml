@@ -28,7 +28,7 @@ services:
   copilot_boot:
     image: curlimages/curl:8.1.2
     user: "0"
-    command: sh -c "set -eux; cd /work; for file in copilot-linux-x64.tar.gz copilot-linux-arm64.tar.gz copilot-linuxmusl-x64.tar.gz copilot-linuxmusl-arm64.tar.gz; do url=\"https://github.com/github/copilot-cli/releases/latest/download/$$file\"; echo \"Trying $$url\"; if curl -fSL \"$$url\" -o copilot.tar.gz; then tar -xzf copilot.tar.gz; if [ -f copilot ]; then chmod +x copilot; rm -f copilot.tar.gz; exit 0; fi; fi; done; echo \"No copilot binary found. Using manual provider instead.\"; exit 0"
+    command: sh -c "set -eux; cd /work; ARCH=$(uname -m); if [ \"$$ARCH\" = \"aarch64\" ]; then file=\"copilot-linuxmusl-arm64.tar.gz\"; else file=\"copilot-linuxmusl-x64.tar.gz\"; fi; url=\"https://github.com/github/copilot-cli/releases/latest/download/$$file\"; echo \"Downloading $$file for $$ARCH (musl)\"; if curl -fSL -L \"$$url\" -o copilot.tar.gz 2>/dev/null; then tar -xzf copilot.tar.gz && chmod +x copilot && rm -f copilot.tar.gz && echo \"✓ Copilot CLI ready\" && exit 0; fi; echo \"Failed to download. Using manual mode.\"; exit 0"
     volumes:
       - copilot_bin:/work
     restart: "no"
