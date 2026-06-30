@@ -10,9 +10,6 @@ services:
       - "5432:5432"
   web:
     build: .
-    # Ensure dependencies are installed on container start (works well with bind mounts)
-    # If a copilot binary has been downloaded into the copilot_bin volume, symlink it into /usr/local/bin
-    command: sh -c "if [ -f /opt/copilot/copilot ]; then ln -sf /opt/copilot/copilot /usr/local/bin/copilot || true; fi && npm install && npm run dev"
     env_file: .env.local
     volumes:
       - .:/usr/src/app

@@ -36,7 +36,11 @@ RUN set -eux; \
 # Copy rest of the application
 COPY . .
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/src/app/
+RUN chmod +x /usr/src/app/docker-entrypoint.sh
+
 ENV NODE_ENV=development
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+ENTRYPOINT ["/usr/src/app/docker-entrypoint.sh"]
