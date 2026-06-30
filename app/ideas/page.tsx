@@ -21,18 +21,63 @@ export default function IdeasPage() {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [hasLoadedAuth, setHasLoadedAuth] = useState(false)
 
   useEffect(() => {
     // Load ideas from API (if signed in) or localStorage (if not)
-    if (isSignedIn) {
-      fetch('/api/ideas')
-        .then((r) => r.json())
-        .then((d) => setIdeas(d.ideas || []))
-        .catch(() => setIdeas([]))
-    } else {
-      // Load from localStorage
-      const stored = localStorage.getItem(STORAGE_KEY)
-      setIdeas(stored ? JSON.parse(stored) : [])
+    if (isSignedIn !== null) {
+      setHasLoadedAuth(true)
+
+      if (isSignedIn) {
+        // User is authenticated - load from API (Supabase)
+        fetch('/api/ideas')
+          .then((r) => r.json())
+          .then((d) => {
+            setIdeas(d.ideas || [])
+
+            // After loading from server, check if there's local data to migrate
+            const localIdeas = localStorage.getItem(STORAGE_KEY)
+            if (localIdeas) {
+              try {
+                const parsed = JSON.parse(localIdeas)
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setMessage(`💾 Found ${parsed.length} local ideas. Migrating to cloud...`)
+
+                  // Migrate local ideas to Supabase
+                  fetch('/api/ideas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payload: parsed })
+                  })
+                    .then((r) => r.json())
+                    .then((res) => {
+                      if (res.ok) {
+                        // Clear local storage after successful migration
+                        localStorage.removeItem(STORAGE_KEY)
+                        setMessage(`✓ Migrated ${res.count} ideas to cloud`)
+
+                        // Reload ideas to show migrated ones
+                        fetch('/api/ideas')
+                          .then((r) => r.json())
+                          .then((d) => setIdeas(d.ideas || []))
+                          .catch(() => {})
+                      }
+                    })
+                    .catch(() => {
+                      setMessage('Could not migrate ideas to cloud. They are still saved locally.')
+                    })
+                }
+              } catch (e) {
+                console.error('Error parsing local ideas:', e)
+              }
+            }
+          })
+          .catch(() => setIdeas([]))
+      } else {
+        // User is not authenticated - load from localStorage
+        const stored = localStorage.getItem(STORAGE_KEY)
+        setIdeas(stored ? JSON.parse(stored) : [])
+      }
     }
   }, [isSignedIn])
 
@@ -103,6 +148,14 @@ export default function IdeasPage() {
     }
   }
 
+  if (!hasLoadedAuth) {
+    return (
+      <div className="p-8">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold">Ideas</h1>
@@ -133,7 +186,7 @@ export default function IdeasPage() {
           className="w-full border p-2 rounded font-mono text-sm"
         />
         <div className="mt-2 flex gap-2">
-          <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          <button type="submit" disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
             {loading ? 'Saving...' : 'Import Ideas'}
           </button>
           <button type="button" onClick={() => { setText(''); setMessage(null); }} className="px-4 py-2 border rounded hover:bg-gray-50">Clear</button>

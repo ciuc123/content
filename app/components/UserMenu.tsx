@@ -3,12 +3,14 @@
 import { useAuth, useUser, SignOutButton } from '@clerk/nextjs'
 import Link from 'next/link'
 import { useState, useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 
 export function UserMenu() {
   const { isSignedIn } = useAuth()
   const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
 
   // Close menu on escape key
   useEffect(() => {
@@ -34,13 +36,29 @@ export function UserMenu() {
     }
   }, [isOpen])
 
+  const handleSignInClick = () => {
+    // Save current path to localStorage before redirecting to sign-in
+    if (pathname && pathname !== '/sign-in' && pathname !== '/sign-up') {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('auth_redirect_path', pathname)
+      }
+    }
+  }
+
   if (!isSignedIn) {
     return (
       <div className="flex gap-3 items-center">
-        <Link href="/sign-in" className="text-sm hover:text-gray-300 transition">
+        <Link
+          href="/sign-in"
+          className="text-sm hover:text-gray-300 transition"
+          onClick={handleSignInClick}
+        >
           Sign In
         </Link>
-        <Link href="/sign-up" className="text-sm bg-blue-600 px-3 py-1 rounded hover:bg-blue-700 transition">
+        <Link
+          href="/sign-up"
+          className="text-sm bg-blue-600 px-3 py-1 rounded hover:bg-blue-700 transition"
+        >
           Sign Up
         </Link>
       </div>
