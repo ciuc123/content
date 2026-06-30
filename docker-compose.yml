@@ -30,16 +30,22 @@ services:
     entrypoint: ["sh","-c"]
     command: |
       set -eux;
-      # Try several likely asset names and save to /work/copilot
-      for file in copilot-linux-amd64 copilot-linux-x86_64 copilot-linux copilot; do
+      cd /work;
+      # Try multiple platform-specific tar.gz archives (prefer x64, fallback to arm64)
+      for file in copilot-linux-x64.tar.gz copilot-linux-arm64.tar.gz copilot-linuxmusl-x64.tar.gz copilot-linuxmusl-arm64.tar.gz; do
         url="https://github.com/github/copilot-cli/releases/latest/download/$file";
         echo "Trying $url";
-        if curl -fSL "$url" -o /work/copilot; then
-          chmod +x /work/copilot;
-          exit 0;
+        if curl -fSL "$url" -o copilot.tar.gz; then
+          tar -xzf copilot.tar.gz;
+          if [ -f copilot ]; then
+            chmod +x copilot;
+            rm -f copilot.tar.gz;
+            exit 0;
+          fi;
         fi;
       done;
-      echo "No copilot binary found. Using manual provider instead."
+      echo "No copilot binary found. Using manual provider instead.";
+      exit 0
     volumes:
       - copilot_bin:/work
     restart: "no"
