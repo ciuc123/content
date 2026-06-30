@@ -116,3 +116,56 @@ export async function getCurrentUser() {
     return null
   }
 }
+
+/**
+ * Check if a user is an admin
+ */
+export async function isUserAdmin(userId: string): Promise<boolean> {
+  try {
+    const { supabaseServer } = await import('./supabase')
+    const supabase = supabaseServer()
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('clerk_id', userId)
+      .single()
+
+    if (error || !user) {
+      return false
+    }
+
+    return user.is_admin === true
+  } catch (error) {
+    console.error('Error checking admin status:', error)
+    return false
+  }
+}
+
+/**
+ * Middleware to protect admin-only API routes
+ * Usage: export default withAdminAuth(async (req, res, userId) => { ... })
+ */
+export function withAdminAuth(
+  handler: (req: NextApiRequest, res: NextApiResponse, userId: string) => Promise<void>
+) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    try {
+      const { userId } = getAuth(req)
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized - Sign in required' })
+      }
+
+      const admin = await isUserAdmin(userId)
+      if (!admin) {
+        return res.status(403).json({ error: 'Forbidden - Admin access required' })
+      }
+
+      await handler(req, res, userId)
+    } catch (error: any) {
+      console.error('Admin auth error:', error)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+}

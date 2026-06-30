@@ -97,23 +97,23 @@ export function UserMenu() {
             {/* Menu Items */}
             <div className="py-1">
               <Link
+                href="/settings/account"
+                onClick={() => setIsOpen(false)}
+                className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="mr-2">👤</span>
+                <span className="font-medium">Account Settings</span>
+              </Link>
+
+              <Link
                 href="/settings/knowledge"
                 onClick={() => setIsOpen(false)}
                 className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
               >
                 <span className="mr-2">⚙️</span>
-                <span className="font-medium">Settings</span>
+                <span className="font-medium">Knowledge Settings</span>
               </Link>
 
-              <a
-                href="https://dashboard.clerk.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="mr-2">👤</span>
-                <span className="font-medium">Account Settings</span>
-              </a>
 
               <div className="border-t border-gray-200">
                 <SignOutButton redirectUrl="/">

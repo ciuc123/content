@@ -1,10 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { auth } from '@clerk/nextjs'
 import { supabaseServer } from '../../../lib/supabase'
-import { encryptString } from '../../../lib/encryption'
+import { encryptString, decryptClientEncryptedApiKey } from '../../../lib/encryption'
 
 interface ApiKeyRequest {
   apiKey: string
+  encrypted?: boolean
 }
 
 interface ApiKeyResponse {
@@ -28,17 +29,32 @@ export default async function handler(
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    const { apiKey } = req.body as ApiKeyRequest
+    const { apiKey, encrypted } = req.body as ApiKeyRequest
     if (!apiKey || typeof apiKey !== 'string') {
       return res.status(400).json({ error: 'apiKey is required' })
     }
 
-    // Encrypt the API key
-    let encrypted: string
+    // Decrypt client-side encryption if present
+    let plainApiKey: string
     try {
-      encrypted = encryptString(apiKey)
+      if (encrypted) {
+        // The API key was encrypted on the client side, decrypt it first
+        plainApiKey = decryptClientEncryptedApiKey(apiKey, userId)
+      } else {
+        // Fallback for direct plaintext (not recommended, but supported)
+        plainApiKey = apiKey
+      }
     } catch (err: any) {
-      console.error('Encryption error:', err)
+      console.error('Client decryption error:', err)
+      return res.status(400).json({ error: 'Failed to decrypt API key' })
+    }
+
+    // Encrypt the API key with server-side encryption
+    let serverEncrypted: string
+    try {
+      serverEncrypted = encryptString(plainApiKey)
+    } catch (err: any) {
+      console.error('Server encryption error:', err)
       return res.status(500).json({ error: 'Failed to encrypt API key' })
     }
 
@@ -64,7 +80,7 @@ export default async function handler(
       result = await supabase
         .from('users')
         .update({
-          api_key_encrypted: encrypted,
+          api_key_encrypted: serverEncrypted,
           updated_at: new Date().toISOString()
         })
         .eq('clerk_id', userId)
@@ -76,7 +92,7 @@ export default async function handler(
         .from('users')
         .insert({
           clerk_id: userId,
-          api_key_encrypted: encrypted,
+          api_key_encrypted: serverEncrypted,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -95,4 +111,6 @@ export default async function handler(
     return res.status(500).json({ error: 'Internal server error' })
   }
 }
+
+
 
