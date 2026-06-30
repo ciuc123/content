@@ -26,119 +26,141 @@ export default function IdeasPage() {
   const [generateLoading, setGenerateLoading] = useState(false)
   const [ideaCount, setIdeaCount] = useState(10)
 
-  useEffect(() => {
-    // Load ideas from API (if signed in) or localStorage (if not)
-    if (isSignedIn !== null) {
-      setHasLoadedAuth(true)
+   useEffect(() => {
+     // Load ideas from API (if signed in) or localStorage (if not)
+     if (isSignedIn !== null) {
+       setHasLoadedAuth(true)
 
-      if (isSignedIn) {
-        // User is authenticated - load from API (Supabase)
-        fetch('/api/ideas')
-          .then((r) => r.json())
-          .then((d) => {
-            setIdeas(d.ideas || [])
+       if (isSignedIn) {
+         // User is authenticated - load from API (Supabase)
+         fetch('/api/ideas')
+           .then((r) => {
+             if (!r.ok) throw new Error(`Failed to load ideas: ${r.statusText}`)
+             return r.json()
+           })
+           .then((d) => {
+             setIdeas(d.ideas || [])
 
-            // After loading from server, check if there's local data to migrate
-            const localIdeas = localStorage.getItem(STORAGE_KEY)
-            if (localIdeas) {
-              try {
-                const parsed = JSON.parse(localIdeas)
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  setMessage(`💾 Found ${parsed.length} local ideas. Migrating to cloud...`)
+             // After loading from server, check if there's local data to migrate
+             const localIdeas = localStorage.getItem(STORAGE_KEY)
+             if (localIdeas) {
+               try {
+                 const parsed = JSON.parse(localIdeas)
+                 if (Array.isArray(parsed) && parsed.length > 0) {
+                   setMessage(`💾 Found ${parsed.length} local ideas. Migrating to cloud...`)
 
-                  // Migrate local ideas to Supabase
-                  fetch('/api/ideas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ payload: parsed })
-                  })
-                    .then((r) => r.json())
-                    .then((res) => {
-                      if (res.ok) {
-                        // Clear local storage after successful migration
-                        localStorage.removeItem(STORAGE_KEY)
-                        setMessage(`✓ Migrated ${res.count} ideas to cloud`)
+                   // Migrate local ideas to Supabase
+                   fetch('/api/ideas', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ payload: parsed })
+                   })
+                     .then((r) => {
+                       if (!r.ok) throw new Error('Failed to migrate')
+                       return r.json()
+                     })
+                     .then((res) => {
+                       if (res.ok) {
+                         // Clear local storage after successful migration
+                         localStorage.removeItem(STORAGE_KEY)
+                         setMessage(`✓ Migrated ${res.count} ideas to cloud`)
 
-                        // Reload ideas to show migrated ones
-                        fetch('/api/ideas')
-                          .then((r) => r.json())
-                          .then((d) => setIdeas(d.ideas || []))
-                          .catch(() => {})
-                      }
-                    })
-                    .catch(() => {
-                      setMessage('Could not migrate ideas to cloud. They are still saved locally.')
-                    })
-                }
-              } catch (e) {
-                console.error('Error parsing local ideas:', e)
-              }
-            }
-          })
-          .catch(() => setIdeas([]))
-      } else {
-        // User is not authenticated - load from localStorage
-        const stored = localStorage.getItem(STORAGE_KEY)
-        setIdeas(stored ? JSON.parse(stored) : [])
-      }
-    }
-  }, [isSignedIn])
+                         // Reload ideas to show migrated ones
+                         fetch('/api/ideas')
+                           .then((r) => {
+                             if (r.ok) return r.json()
+                             throw new Error('Failed to reload')
+                           })
+                           .then((d) => setIdeas(d.ideas || []))
+                           .catch(() => {})
+                       }
+                     })
+                     .catch((err) => {
+                       setMessage('Could not migrate ideas to cloud. They are still saved locally.')
+                     })
+                 }
+               } catch (e) {
+                 console.error('Error parsing local ideas:', e)
+               }
+             }
+           })
+           .catch((err) => {
+             console.error('Failed to load ideas:', err)
+             setIdeas([])
+           })
+       } else {
+         // User is not authenticated - load from localStorage
+         const stored = localStorage.getItem(STORAGE_KEY)
+         setIdeas(stored ? JSON.parse(stored) : [])
+       }
+     }
+   }, [isSignedIn])
 
-  async function handleSubmit(e?: React.FormEvent) {
-    e?.preventDefault()
-    setLoading(true)
-    setMessage(null)
-    try {
-      let newIdeas: any[] = []
+   async function handleSubmit(e?: React.FormEvent) {
+     e?.preventDefault()
+     setLoading(true)
+     setMessage(null)
+     try {
+       let newIdeas: any[] = []
 
-      // Parse input
-      if (typeof text === 'string') {
-        newIdeas = JSON.parse(text)
-      } else {
-        newIdeas = Array.isArray(text) ? text : [text]
-      }
+       // Parse input
+       if (typeof text === 'string') {
+         newIdeas = JSON.parse(text)
+       } else {
+         newIdeas = Array.isArray(text) ? text : [text]
+       }
 
-      if (!Array.isArray(newIdeas)) {
-        throw new Error('Input must be a JSON array')
-      }
+       if (!Array.isArray(newIdeas)) {
+         throw new Error('Input must be a JSON array')
+       }
 
-      if (isSignedIn) {
-        // Save to API (Supabase)
-        const res = await fetch('/api/ideas', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payload: text })
-        })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json?.error || 'Failed')
+       if (isSignedIn) {
+         // Save to API (Supabase)
+         const res = await fetch('/api/ideas', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ payload: text })
+         })
 
-        // Refresh from server
-        const list = await fetch('/api/ideas').then((r) => r.json())
-        setIdeas(list.ideas || [])
-        setMessage(`✓ Synced ${json.count} ideas to cloud`)
-      } else {
-        // Save to localStorage
-        const stored = localStorage.getItem(STORAGE_KEY)
-        const existing = stored ? JSON.parse(stored) : []
-        const updated = [
-          ...existing,
-          ...newIdeas.map((idea: any) => ({
-            id: 'idea_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
-            ...idea,
-            created_at: new Date().toISOString(),
-          }))
-        ]
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
-        setIdeas(updated)
-        setMessage(`✓ Saved ${newIdeas.length} ideas locally`)
-      }
+         // Parse response safely
+         let json: any = {}
+         try {
+           json = await res.json()
+         } catch (parseErr) {
+           throw new Error(`Invalid response from server: ${res.statusText}`)
+         }
 
-      setText('')
-    } catch (err: any) {
-      setMessage('Error: ' + String(err))
-    }
-    setLoading(false)
-  }
+         if (!res.ok) throw new Error(json?.error || `Failed: ${res.statusText}`)
+
+         // Refresh from server
+         const listRes = await fetch('/api/ideas')
+         if (!listRes.ok) throw new Error('Failed to refresh ideas')
+         const list = await listRes.json()
+         setIdeas(list.ideas || [])
+         setMessage(`✓ Synced ${json.count} ideas to cloud`)
+       } else {
+         // Save to localStorage
+         const stored = localStorage.getItem(STORAGE_KEY)
+         const existing = stored ? JSON.parse(stored) : []
+         const updated = [
+           ...existing,
+           ...newIdeas.map((idea: any) => ({
+             id: 'idea_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+             ...idea,
+             created_at: new Date().toISOString(),
+           }))
+         ]
+         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+         setIdeas(updated)
+         setMessage(`✓ Saved ${newIdeas.length} ideas locally`)
+       }
+
+       setText('')
+     } catch (err: any) {
+       setMessage('Error: ' + String(err))
+     }
+     setLoading(false)
+   }
 
   async function handleSelect(idea: any) {
     try {

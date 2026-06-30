@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { auth } from '@clerk/nextjs/server'
+import { getAuth } from '@clerk/nextjs/server'
 import { supabaseHelpers } from '../../../lib/supabase'
 
 type ResponseData = {
@@ -11,14 +11,13 @@ type ResponseData = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   // Get user ID from Clerk
-  const { userId } = await auth()
-
-  // Unauthenticated users must use client-side storage
-  if (!userId) {
-    return res.status(401).json({ error: 'Sign in to sync data' })
-  }
+  const { userId } = getAuth(req)
 
   if (req.method === 'GET') {
+    // Unauthenticated users cannot sync from cloud
+    if (!userId) {
+      return res.status(401).json({ error: 'Sign in to sync data' })
+    }
     try {
       const { data, error } = await supabaseHelpers.getIdeas(userId)
       if (error) return res.status(500).json({ error: error.message })
@@ -29,6 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   if (req.method === 'POST') {
+    // Unauthenticated users must use client-side storage
+    if (!userId) {
+      return res.status(401).json({ error: 'Sign in to sync ideas to cloud. Using browser storage locally.' })
+    }
     try {
       const { payload } = req.body
       if (!payload) return res.status(400).json({ error: 'payload is required' })
