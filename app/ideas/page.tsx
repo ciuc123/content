@@ -22,6 +22,9 @@ export default function IdeasPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [hasLoadedAuth, setHasLoadedAuth] = useState(false)
+  const [topic, setTopic] = useState('')
+  const [generateLoading, setGenerateLoading] = useState(false)
+  const [ideaCount, setIdeaCount] = useState(10)
 
   useEffect(() => {
     // Load ideas from API (if signed in) or localStorage (if not)
@@ -148,6 +151,41 @@ export default function IdeasPage() {
     }
   }
 
+  async function handleGenerateIdeas(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!topic.trim()) {
+      setMessage('Please enter a topic')
+      return
+    }
+
+    setGenerateLoading(true)
+    setMessage(null)
+    try {
+      const res = await fetch('/api/ai/agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generateIdeas',
+          topic: topic.trim(),
+          count: ideaCount
+        })
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || 'Failed to generate ideas')
+
+      if (json.success && json.data && Array.isArray(json.data)) {
+        // Populate the text field with the generated ideas as JSON
+        setText(JSON.stringify(json.data, null, 2))
+        setMessage(`✓ Generated ${json.data.length} ideas! Review and click "Import Ideas" to save them.`)
+      } else {
+        throw new Error('Invalid response format from AI')
+      }
+    } catch (err: any) {
+      setMessage('Error generating ideas: ' + String(err) + '. You can try the manual method below.')
+    }
+    setGenerateLoading(false)
+  }
+
   if (!hasLoadedAuth) {
     return (
       <div className="p-8">
@@ -167,10 +205,44 @@ export default function IdeasPage() {
         </div>
       )}
 
+      <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded">
+        <h2 className="text-sm font-bold mb-3">🤖 Generate Ideas with AI</h2>
+        <form onSubmit={handleGenerateIdeas} className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Topic or Subject</label>
+            <input
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., DevOps best practices, AI in content creation, remote work trends..."
+              className="w-full border p-2 rounded text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Number of Ideas</label>
+            <input
+              type="number"
+              value={ideaCount}
+              onChange={(e) => setIdeaCount(Math.max(1, parseInt(e.target.value) || 10))}
+              min="1"
+              max="50"
+              className="w-full border p-2 rounded text-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={generateLoading}
+            className="w-full px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+          >
+            {generateLoading ? '⏳ Generating...' : '✨ Generate Ideas'}
+          </button>
+        </form>
+      </div>
+
       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
-        <p className="text-sm font-medium mb-2">💡 Quick Start:</p>
-        <p className="text-sm mb-2">Ask GitHub Copilot to generate 10 content ideas:</p>
-        <code className="text-xs bg-white p-2 rounded block mb-2">
+        <p className="text-sm font-medium mb-2">💭 Manual Alternative:</p>
+        <p className="text-sm mb-2">Ask GitHub Copilot in the web interface to generate 10 content ideas:</p>
+        <code className="text-xs bg-white p-2 rounded block mb-2 overflow-x-auto">
           Generate 10 unique content ideas for a software engineer's blog. For each idea, provide: title, why_it_matters, virality_score (1-10), business_score (1-10). Output as JSON array.
         </code>
         <p className="text-sm">Then copy the JSON output and paste it below.</p>
