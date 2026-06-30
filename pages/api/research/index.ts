@@ -49,19 +49,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (typeof content !== 'string') return res.status(400).json({ error: 'content is required' })
 
       if (USE_SUPABASE && userId) {
-        // First get the idea to get its ID
-        const { data: ideas, error: ideaError } = await supabase
-          .from('ideas')
-          .select('id')
-          .eq('user_id', userId)
-          .limit(1)
-
-        if (ideaError) throw new Error(ideaError.message)
-        if (!ideas || ideas.length === 0) {
-          return res.status(400).json({ error: 'No idea found' })
+        // Use the idea_id from the idea object passed from frontend
+        const ideaId = idea?.id
+        if (!ideaId) {
+          return res.status(400).json({ error: 'Idea ID is required. Please select an idea first.' })
         }
 
-        const ideaId = ideas[0].id
+        // Verify the idea belongs to this user
+        const { data: ideaRecord, error: ideaError } = await supabase
+          .from('ideas')
+          .select('id')
+          .eq('id', ideaId)
+          .eq('user_id', userId)
+          .single()
+
+        if (ideaError || !ideaRecord) {
+          return res.status(400).json({ error: 'No idea found or access denied' })
+        }
+
         const entry: Research = {
           user_id: userId,
           idea_id: ideaId,
