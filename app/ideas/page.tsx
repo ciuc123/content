@@ -162,16 +162,28 @@ export default function IdeasPage() {
      setLoading(false)
    }
 
-  async function handleSelect(idea: any) {
-    try {
-      // Store selected idea in sessionStorage
-      sessionStorage.setItem('selected_idea', JSON.stringify(idea))
-      setMessage('✓ Idea selected')
-      setTimeout(() => router.push('/ideas/research'), 300)
-    } catch (err: any) {
-      setMessage(String(err))
-    }
-  }
+   async function handleSelect(idea: any) {
+     try {
+       // Store selected idea in sessionStorage immediately (non-blocking)
+       sessionStorage.setItem('selected_idea', JSON.stringify(idea))
+
+       // Async background call to update status in Supabase (fire-and-forget for authenticated users)
+       if (isSignedIn && idea.id) {
+         fetch('/api/ideas', {
+           method: 'PATCH',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ idea_id: idea.id })
+         }).catch(() => {
+           // Silently fail - user experience not blocked
+         })
+       }
+
+       setMessage('✓ Idea selected')
+       router.push('/ideas/research')
+     } catch (err: any) {
+       setMessage(String(err))
+     }
+   }
 
   async function handleGenerateIdeas(e?: React.FormEvent) {
     e?.preventDefault()
