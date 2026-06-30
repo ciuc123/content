@@ -185,40 +185,48 @@ export default function IdeasPage() {
      }
    }
 
-  async function handleGenerateIdeas(e?: React.FormEvent) {
-    e?.preventDefault()
-    if (!topic.trim()) {
-      setMessage('Please enter a topic')
-      return
-    }
+   async function handleGenerateIdeas(e?: React.FormEvent) {
+     e?.preventDefault()
+     if (!topic.trim()) {
+       setMessage('Please enter a topic')
+       return
+     }
 
-    setGenerateLoading(true)
-    setMessage(null)
-    try {
-      const res = await fetch('/api/ai/agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generateIdeas',
-          topic: topic.trim(),
-          count: ideaCount
-        })
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || 'Failed to generate ideas')
+     setGenerateLoading(true)
+     setMessage(null)
+     try {
+       const res = await fetch('/api/ai/agent', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           action: 'generateIdeas',
+           topic: topic.trim(),
+           count: ideaCount
+         })
+       })
+       const json = await res.json()
+       if (!res.ok) {
+         // Check if it's an API key configuration issue
+         if (res.status === 401 && json?.error?.includes('API key')) {
+           setMessage(`⚠️ API key not configured. Please go to Settings → API Key and add your GitHub Copilot API key, then try again.`)
+         } else {
+           throw new Error(json?.error || 'Failed to generate ideas')
+         }
+         return
+       }
 
-      if (json.success && json.data && Array.isArray(json.data)) {
-        // Populate the text field with the generated ideas as JSON
-        setText(JSON.stringify(json.data, null, 2))
-        setMessage(`✓ Generated ${json.data.length} ideas! Review and click "Import Ideas" to save them.`)
-      } else {
-        throw new Error('Invalid response format from AI')
-      }
-    } catch (err: any) {
-      setMessage('Error generating ideas: ' + String(err) + '. You can try the manual method below.')
-    }
-    setGenerateLoading(false)
-  }
+       if (json.success && json.data && Array.isArray(json.data)) {
+         // Populate the text field with the generated ideas as JSON
+         setText(JSON.stringify(json.data, null, 2))
+         setMessage(`✓ Generated ${json.data.length} ideas! Review and click "Import Ideas" to save them.`)
+       } else {
+         throw new Error('Invalid response format from AI')
+       }
+     } catch (err: any) {
+       setMessage('Error generating ideas: ' + String(err) + '. You can try the manual method below.')
+     }
+     setGenerateLoading(false)
+   }
 
   if (!hasLoadedAuth) {
     return (

@@ -94,7 +94,15 @@ export default function IdeaResearchPage() {
         })
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || 'Failed to generate')
+      if (!res.ok) {
+        // Check if it's an API key configuration issue
+        if (res.status === 401 && json?.error?.includes('API key')) {
+          setMessage(`⚠️ API key not configured. Please go to Settings → API Key and add your GitHub Copilot API key, then try again.`)
+        } else {
+          setMessage('Error generating research: ' + String(json?.error || 'Failed to generate') + '. You can try the manual method below.')
+        }
+        return
+      }
 
       if (json.success && json.data) {
         // Extract research from nested data structure
