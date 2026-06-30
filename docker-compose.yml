@@ -18,6 +18,7 @@ services:
       - .:/usr/src/app
       - node_modules:/usr/src/app/node_modules
       - copilot_bin:/opt/copilot:ro
+      - ~/.config/gh:/root/.config/gh:ro
     ports:
       - "3000:3000"
     depends_on:
