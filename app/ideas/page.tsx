@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@clerk/nextjs'
 
 type Idea = {
   title?: string
@@ -11,46 +12,107 @@ type Idea = {
   [key: string]: any
 }
 
+const STORAGE_KEY = 'ideas_temp'
+
 export default function IdeasPage() {
   const router = useRouter()
-  const [ideas, setIdeas] = useState<Idea[]>([])
+  const { isSignedIn } = useAuth()
+  const [ideas, setIdeas] = useState<any[]>([])
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/ideas')
-      .then((r) => r.json())
-      .then((d) => setIdeas(d.ideas || []))
-      .catch(() => setIdeas([]))
-  }, [])
+    // Load ideas from API (if signed in) or localStorage (if not)
+    if (isSignedIn) {
+      fetch('/api/ideas')
+        .then((r) => r.json())
+        .then((d) => setIdeas(d.ideas || []))
+        .catch(() => setIdeas([]))
+    } else {
+      // Load from localStorage
+      const stored = localStorage.getItem(STORAGE_KEY)
+      setIdeas(stored ? JSON.parse(stored) : [])
+    }
+  }, [isSignedIn])
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault()
     setLoading(true)
     setMessage(null)
     try {
-      const res = await fetch('/api/ideas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload: text })
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || 'Failed')
-      const list = await fetch('/api/ideas').then((r) => r.json())
-      setIdeas(list.ideas || [])
+      let newIdeas: any[] = []
+
+      // Parse input
+      if (typeof text === 'string') {
+        newIdeas = JSON.parse(text)
+      } else {
+        newIdeas = Array.isArray(text) ? text : [text]
+      }
+
+      if (!Array.isArray(newIdeas)) {
+        throw new Error('Input must be a JSON array')
+      }
+
+      if (isSignedIn) {
+        // Save to API (Supabase)
+        const res = await fetch('/api/ideas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload: text })
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json?.error || 'Failed')
+
+        // Refresh from server
+        const list = await fetch('/api/ideas').then((r) => r.json())
+        setIdeas(list.ideas || [])
+        setMessage(`✓ Synced ${json.count} ideas to cloud`)
+      } else {
+        // Save to localStorage
+        const stored = localStorage.getItem(STORAGE_KEY)
+        const existing = stored ? JSON.parse(stored) : []
+        const updated = [
+          ...existing,
+          ...newIdeas.map((idea: any) => ({
+            id: 'idea_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+            ...idea,
+            created_at: new Date().toISOString(),
+          }))
+        ]
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+        setIdeas(updated)
+        setMessage(`✓ Saved ${newIdeas.length} ideas locally`)
+      }
+
       setText('')
-      setMessage(`✓ Saved ${json.count} ideas`)
+    } catch (err: any) {
+      setMessage('Error: ' + String(err))
+    }
+    setLoading(false)
+  }
+
+  async function handleSelect(idea: any) {
+    try {
+      // Store selected idea in sessionStorage
+      sessionStorage.setItem('selected_idea', JSON.stringify(idea))
+      setMessage('✓ Idea selected')
+      setTimeout(() => router.push('/ideas/research'), 300)
     } catch (err: any) {
       setMessage(String(err))
     }
-    setLoading(false)
   }
 
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold">Ideas</h1>
       <p className="mt-2 text-sm text-gray-600">Generate and manage content ideas.</p>
+
+      {!isSignedIn && (
+        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-900">
+          💡 Using browser storage (local). Sign in to sync across devices.
+        </div>
+      )}
 
       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded">
         <p className="text-sm font-medium mb-2">💡 Quick Start:</p>
@@ -97,29 +159,14 @@ export default function IdeasPage() {
             </thead>
             <tbody>
               {ideas.map((idea, idx) => (
-                <tr key={idx} className="align-top hover:bg-gray-50">
+                <tr key={idea.id || idx} className="align-top hover:bg-gray-50">
                   <td className="p-2 border-b font-medium">{idea.title || JSON.stringify(idea).slice(0, 80)}</td>
                   <td className="p-2 border-b text-sm">{idea.why_it_matters || '-'}</td>
                   <td className="p-2 border-b text-center">{idea.virality_score ?? '-'}</td>
                   <td className="p-2 border-b text-center">{idea.business_score ?? '-'}</td>
                   <td className="p-2 border-b">
                     <button
-                      onClick={async () => {
-                        try {
-                          const r = await fetch('/api/ideas/select', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ index: idx })
-                          })
-                          const j = await r.json()
-                          if (!r.ok) throw new Error(j?.error || 'Failed')
-                          setMessage('✓ Idea selected')
-                          // navigate to research page using Next router
-                          setTimeout(() => router.push('/ideas/research'), 300)
-                        } catch (err: any) {
-                          setMessage(String(err))
-                        }
-                      }}
+                      onClick={() => handleSelect(idea)}
                       className="px-3 py-1 bg-yellow-500 text-black rounded hover:bg-yellow-600"
                     >
                       Take Further

@@ -1,14 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { auth } from '@clerk/nextjs/server'
-import fs from 'fs'
-import path from 'path'
-import { supabase, type Idea } from '../../../lib/supabase'
-
-const USE_SUPABASE = process.env.USE_SUPABASE === 'true'
-const dataFile = path.join(process.cwd(), 'data', 'ideas.json')
+import { supabaseHelpers } from '../../../lib/supabase'
 
 type ResponseData = {
-  ideas?: Idea[]
+  ideas?: any[]
   ok?: boolean
   count?: number
   error?: string
@@ -16,35 +11,18 @@ type ResponseData = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ResponseData>) {
   // Get user ID from Clerk
-  const { userId: clerkUserId } = await auth()
+  const { userId } = await auth()
 
-  // In dev mode with auth disabled, use a default dev user ID
-  const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
-  const userId = clerkUserId || (devAuthDisabled ? 'dev-user' : null)
-
-  // If Supabase is enabled, require authentication
-  if (USE_SUPABASE && !userId) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  // Unauthenticated users must use client-side storage
+  if (!userId) {
+    return res.status(401).json({ error: 'Sign in to sync data' })
   }
 
   if (req.method === 'GET') {
     try {
-      if (USE_SUPABASE && userId) {
-        // Fetch from Supabase
-        const { data, error } = await supabase
-          .from('ideas')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-
-        if (error) throw new Error(error.message)
-        return res.status(200).json({ ideas: data || [] })
-      } else {
-        // Fallback to file-based storage (dev mode)
-        const raw = fs.existsSync(dataFile) ? fs.readFileSync(dataFile, 'utf-8') : '[]'
-        const ideas = JSON.parse(raw || '[]')
-        return res.status(200).json({ ideas })
-      }
+      const { data, error } = await supabaseHelpers.getIdeas(userId)
+      if (error) return res.status(500).json({ error: error.message })
+      return res.status(200).json({ ideas: data || [] })
     } catch (err: any) {
       return res.status(500).json({ error: String(err) })
     }
@@ -55,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const { payload } = req.body
       if (!payload) return res.status(400).json({ error: 'payload is required' })
 
-      let ideas: Idea[] = []
+      let ideas: any[] = []
 
       // Parse payload as JSON if string
       if (typeof payload === 'string') {
@@ -68,29 +46,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(400).json({ error: 'payload must be an array' })
       }
 
-      if (USE_SUPABASE && userId) {
-        // Insert into Supabase
-        const dataToInsert = ideas.map(idea => ({
-          ...idea,
-          user_id: userId,
-          status: 'new',
-        }))
-
-        const { error } = await supabase
-          .from('ideas')
-          .insert(dataToInsert)
-
-        if (error) throw new Error(error.message)
-        return res.status(200).json({ ok: true, count: ideas.length })
-      } else {
-        // Save to file (dev mode)
-        const raw = fs.existsSync(dataFile) ? fs.readFileSync(dataFile, 'utf-8') : '[]'
-        const existing = JSON.parse(raw || '[]')
-        const updated = [...existing, ...ideas]
-        fs.mkdirSync(path.dirname(dataFile), { recursive: true })
-        fs.writeFileSync(dataFile, JSON.stringify(updated, null, 2))
-        return res.status(200).json({ ok: true, count: ideas.length })
+      let count = 0
+      for (const idea of ideas) {
+        const { error } = await supabaseHelpers.createIdea(userId, {
+          title: idea.title,
+          why_it_matters: idea.why_it_matters,
+          virality_score: idea.virality_score,
+          business_score: idea.business_score,
+        })
+        if (!error) count++
       }
+
+      return res.status(200).json({ ok: true, count })
     } catch (err: any) {
       return res.status(500).json({ error: String(err) })
     }
@@ -99,4 +66,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   res.setHeader('Allow', ['GET', 'POST'])
   res.status(405).end('Method Not Allowed')
 }
-
