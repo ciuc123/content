@@ -21,10 +21,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const devAuthDisabled = process.env.DEV_AUTH_DISABLED === 'true'
   const userId = clerkUserId || (devAuthDisabled ? 'dev-user' : null)
 
-  if (USE_SUPABASE && !userId) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
   if (req.method === 'GET') {
     try {
       if (USE_SUPABASE && userId) {
@@ -37,6 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         if (error) throw new Error(error.message)
         return res.status(200).json({ research: data || [] })
       } else {
+        // Unauthenticated users or file-based storage
         const raw = fs.existsSync(dataFile) ? fs.readFileSync(dataFile, 'utf-8') : '[]'
         const data = JSON.parse(raw || '[]')
         return res.status(200).json({ research: data })

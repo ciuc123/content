@@ -1,8 +1,10 @@
 "use client"
 
 import React, { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/nextjs'
 
 export default function IdeaGeneratePage() {
+  const { isSignedIn } = useAuth()
   const [ideas, setIdeas] = useState<any[]>([])
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [selectedIdea, setSelectedIdea] = useState<any | null>(null)
@@ -112,29 +114,29 @@ export default function IdeaGeneratePage() {
       <div className="p-2 border rounded bg-gray-50 mt-2 whitespace-pre-wrap text-sm">{research || 'No research yet'}</div>
 
       <form onSubmit={saveGenerated} className="mt-6 space-y-6">
-        <div>
-          <label className="block text-sm font-medium mb-2">LinkedIn Post (150-300 words)</label>
-          <textarea value={linkedin} onChange={(e) => setLinkedin(e.target.value)} rows={6} className="w-full border p-2 rounded" placeholder="AI-generated LinkedIn post will appear here..." />
-          <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => generateViaAI('linkedin')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Generate via AI</button>
-          </div>
-        </div>
+         <div>
+           <label className="block text-sm font-medium mb-2">LinkedIn Post (150-300 words)</label>
+           <textarea value={linkedin} onChange={(e) => setLinkedin(e.target.value)} rows={6} className="w-full border p-2 rounded" placeholder="AI-generated LinkedIn post will appear here..." />
+           <div className="mt-2 flex gap-2">
+             <button type="button" onClick={() => generateViaAI('linkedin')} disabled={!isSignedIn} title={!isSignedIn ? 'Sign in required to use AI features' : ''} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">{!isSignedIn ? '🔒 Sign in' : 'Generate via AI'}</button>
+           </div>
+         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Blog Post (1200-2000 words markdown)</label>
-          <textarea value={blog} onChange={(e) => setBlog(e.target.value)} rows={16} className="w-full border p-2 rounded font-mono text-sm" placeholder="AI-generated blog post will appear here..." />
-          <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => generateViaAI('blog')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Generate via AI</button>
-          </div>
-        </div>
+         <div>
+           <label className="block text-sm font-medium mb-2">Blog Post (1200-2000 words markdown)</label>
+           <textarea value={blog} onChange={(e) => setBlog(e.target.value)} rows={16} className="w-full border p-2 rounded font-mono text-sm" placeholder="AI-generated blog post will appear here..." />
+           <div className="mt-2 flex gap-2">
+             <button type="button" onClick={() => generateViaAI('blog')} disabled={!isSignedIn} title={!isSignedIn ? 'Sign in required to use AI features' : ''} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">{!isSignedIn ? '🔒 Sign in' : 'Generate via AI'}</button>
+           </div>
+         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Newsletter (300-500 words)</label>
-          <textarea value={newsletter} onChange={(e) => setNewsletter(e.target.value)} rows={8} className="w-full border p-2 rounded" placeholder="AI-generated newsletter content will appear here..." />
-          <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => generateViaAI('newsletter')} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Generate via AI</button>
-          </div>
-        </div>
+         <div>
+           <label className="block text-sm font-medium mb-2">Newsletter (300-500 words)</label>
+           <textarea value={newsletter} onChange={(e) => setNewsletter(e.target.value)} rows={8} className="w-full border p-2 rounded" placeholder="AI-generated newsletter content will appear here..." />
+           <div className="mt-2 flex gap-2">
+             <button type="button" onClick={() => generateViaAI('newsletter')} disabled={!isSignedIn} title={!isSignedIn ? 'Sign in required to use AI features' : ''} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">{!isSignedIn ? '🔒 Sign in' : 'Generate via AI'}</button>
+           </div>
+         </div>
 
         <div className="flex gap-2 pt-4 border-t">
           <button type="submit" disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{loading ? 'Saving...' : 'Save Generated'}</button>

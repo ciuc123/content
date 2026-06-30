@@ -12,9 +12,10 @@ import { getAIProvider } from './providerFactory'
 export class AgentProvider implements AIProvider {
   private baseProvider: AIProvider
 
-  constructor() {
+  constructor(apiKey?: string) {
     // Use the configured provider (OpenAI, GitHub CLI, or Manual)
-    this.baseProvider = getAIProvider()
+    // Pass user's API key if provided
+    this.baseProvider = getAIProvider(apiKey)
   }
 
   /**
@@ -189,7 +190,12 @@ Output ONLY the newsletter article content.`
  */
 let agentInstance: AgentProvider | null = null
 
-export function getAgentProvider(): AgentProvider {
+export function getAgentProvider(apiKey?: string): AgentProvider {
+  // If apiKey is provided, create a new instance (per-user, don't cache)
+  if (apiKey) {
+    return new AgentProvider(apiKey)
+  }
+  // Otherwise use cached singleton
   if (!agentInstance) {
     agentInstance = new AgentProvider()
   }

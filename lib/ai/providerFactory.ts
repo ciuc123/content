@@ -2,19 +2,14 @@ import { AIProvider } from './ai'
 import { GitHubModelsProvider } from './githubProvider'
 import { OpenAIProvider } from './openaiProvider'
 
-let instance: AIProvider | null = null
-
-export function getAIProvider(): AIProvider {
-  if (instance) return instance
-
-  // Use OpenAI if API key is provided, otherwise use GitHub Copilot CLI from copilot_boot container
-  const provider = process.env.OPENAI_API_KEY ? 'openai' : 'github'
+export function getAIProvider(apiKey?: string): AIProvider {
+  // Use OpenAI if API key is provided (user's key or environment variable), otherwise use GitHub Copilot CLI
+  const provider = apiKey || process.env.OPENAI_API_KEY ? 'openai' : 'github'
 
   if (provider === 'openai') {
-    instance = new OpenAIProvider()
+    return new OpenAIProvider(apiKey)
   } else {
     // GitHub Copilot CLI provider (from copilot_boot container)
-    instance = new GitHubModelsProvider()
+    return new GitHubModelsProvider()
   }
-  return instance
 }

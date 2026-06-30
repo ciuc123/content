@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
+import { withAIAuth } from '../../../lib/clerk'
 
 interface CopilotRequest {
   prompt: string
@@ -24,10 +25,12 @@ interface CopilotResponse {
  * Body: { prompt: "...", temperature?: 0.7, max_tokens?: 2000 }
  */
 
-export default async function handler(
+const handler = async (
   req: NextApiRequest,
-  res: NextApiResponse<CopilotResponse>
-) {
+  res: NextApiResponse<CopilotResponse>,
+  userId: string,
+  apiKey: string
+): Promise<void> => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST'])
     return res.status(405).json({ success: false, error: 'Method Not Allowed' })
@@ -42,17 +45,17 @@ export default async function handler(
 
     const copilotEnabled = process.env.COPILOT_ENABLED === 'true'
     const useOpenAI = process.env.COPILOT_USE_OPENAI === 'true'
-    const openaiKey = process.env.OPENAI_API_KEY
+    // Use the user's decrypted API key from middleware, not environment variable
     const githubToken = process.env.GITHUB_TOKEN
 
     // Option 1: Use OpenAI API (via GitHub Copilot backend)
-    if (copilotEnabled && useOpenAI && openaiKey) {
+    if (copilotEnabled && useOpenAI && apiKey) {
       try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openaiKey}`,
+            'Authorization': `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
             model: 'gpt-4-turbo-preview',
@@ -106,7 +109,7 @@ export default async function handler(
       }
     }
 
-    // Option 3: Manual mode (default fallback)
+     // Option 3: Manual mode (default fallback)
     return res.status(200).json({
       success: true,
       content: `[Manual Mode]\nPlease copy this prompt and paste it into GitHub Copilot:\n\n${prompt}\n\nThen paste the response back into the UI.`,
@@ -116,4 +119,6 @@ export default async function handler(
     return res.status(500).json({ success: false, error: String(err) })
   }
 }
+
+export default withAIAuth(handler)
 

@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs'
+import { getAuth } from '@clerk/nextjs/server'
 import { NextApiRequest, NextApiResponse } from 'next'
 
 /**
@@ -26,8 +27,8 @@ export function withClerkAuth(
 ) {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     try {
-      // This works in pages/api routes when middleware is configured
-      const { userId } = auth()
+      // Use getAuth for API routes (not auth() which is for Server Components)
+      const { userId } = getAuth(req)
 
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' })
@@ -36,6 +37,64 @@ export function withClerkAuth(
       await handler(req, res, userId)
     } catch (error: any) {
       console.error('Auth error:', error)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+}
+
+/**
+ * Middleware to protect AI endpoints with Clerk authentication and API key retrieval
+ *
+ * Usage in API routes:
+ * export default withAIAuth(async (req, res, userId, apiKey) => {
+ *   // Your handler code - apiKey is already decrypted and ready to use
+ * })
+ */
+export function withAIAuth(
+  handler: (req: NextApiRequest, res: NextApiResponse, userId: string, apiKey: string) => Promise<void>
+) {
+  return async (req: NextApiRequest, res: NextApiResponse) => {
+    try {
+      // Use getAuth for API routes (not auth() which is for Server Components)
+      const { userId } = getAuth(req)
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized - Sign in required' })
+      }
+
+      // Get the user's API key from Supabase
+      const { supabaseServer } = await import('./supabase')
+      const { decryptString } = await import('./encryption')
+
+      const supabase = supabaseServer()
+      const { data: userRecord, error } = await supabase
+        .from('users')
+        .select('api_key_encrypted')
+        .eq('clerk_id', userId)
+        .single()
+
+      if (error || !userRecord) {
+        console.error('Error fetching user API key:', error)
+        return res.status(401).json({ error: 'API key not found - please add one in settings' })
+      }
+
+      if (!userRecord.api_key_encrypted) {
+        return res.status(401).json({ error: 'API key not configured - please add one in settings' })
+      }
+
+      // Decrypt the API key
+      let apiKey: string
+      try {
+        apiKey = decryptString(userRecord.api_key_encrypted)
+      } catch (err: any) {
+        console.error('Decryption error:', err)
+        return res.status(500).json({ error: 'Failed to decrypt API key' })
+      }
+
+      // Call the handler with the decrypted API key
+      await handler(req, res, userId, apiKey)
+    } catch (error: any) {
+      console.error('AI auth error:', error)
       return res.status(500).json({ error: 'Internal server error' })
     }
   }
@@ -57,4 +116,3 @@ export async function getCurrentUser() {
     return null
   }
 }
-

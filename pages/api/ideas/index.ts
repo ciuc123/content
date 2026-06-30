@@ -14,9 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const { userId } = getAuth(req)
 
   if (req.method === 'GET') {
-    // Unauthenticated users cannot sync from cloud
+    // Unauthenticated users get empty list (they use localStorage)
     if (!userId) {
-      return res.status(401).json({ error: 'Sign in to sync data' })
+      return res.status(200).json({ ideas: [] })
     }
     try {
       // Use server-side Supabase client for secure server operations
@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   if (req.method === 'POST') {
     // Unauthenticated users must use client-side storage
     if (!userId) {
-      return res.status(401).json({ error: 'Sign in to sync ideas to cloud. Using browser storage locally.' })
+      return res.status(400).json({ error: 'Sign in to sync ideas to cloud. Using browser storage locally.' })
     }
     try {
       const { payload } = req.body

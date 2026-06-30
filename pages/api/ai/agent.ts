@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { withAIAuth } from '../../../lib/clerk'
 import { getAgentProvider } from '../../../lib/ai/agentProvider'
 import fs from 'fs'
 import path from 'path'
@@ -19,7 +20,7 @@ interface AgentResponse {
   error?: string
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<AgentResponse>) {
+const handler = async (req: NextApiRequest, res: NextApiResponse<AgentResponse>, userId: string, apiKey: string) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST'])
     return res.status(405).end('Method Not Allowed')
@@ -32,7 +33,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return res.status(400).json({ success: false, error: 'action is required' })
     }
 
-    const agent = getAgentProvider()
+    // Create agent with user's decrypted API key
+    const agent = getAgentProvider(apiKey)
 
     switch (action) {
       case 'generateIdeas': {
@@ -125,4 +127,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     return res.status(500).json({ success: false, error: String(err) })
   }
 }
+
+export default withAIAuth(handler)
 

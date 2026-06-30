@@ -251,13 +251,14 @@ export default function IdeasPage() {
               className="w-full border p-2 rounded text-sm"
             />
           </div>
-          <button
-            type="submit"
-            disabled={generateLoading}
-            className="w-full px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
-          >
-            {generateLoading ? '⏳ Generating...' : '✨ Generate Ideas'}
-          </button>
+           <button
+             type="submit"
+             disabled={generateLoading || !isSignedIn}
+             title={!isSignedIn ? 'Sign in required to use AI features' : ''}
+             className="w-full px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
+           >
+             {!isSignedIn ? '🔒 Sign in to generate' : (generateLoading ? '⏳ Generating...' : '✨ Generate Ideas')}
+           </button>
         </form>
       </div>
 
