@@ -27,25 +27,8 @@ services:
         condition: service_completed_successfully
   copilot_boot:
     image: curlimages/curl:8.1.2
-    entrypoint: ["sh","-c"]
-    command: |
-      set -eux;
-      cd /work;
-      # Try multiple platform-specific tar.gz archives (prefer x64, fallback to arm64)
-      for file in copilot-linux-x64.tar.gz copilot-linux-arm64.tar.gz copilot-linuxmusl-x64.tar.gz copilot-linuxmusl-arm64.tar.gz; do
-        url="https://github.com/github/copilot-cli/releases/latest/download/$file";
-        echo "Trying $url";
-        if curl -fSL "$url" -o copilot.tar.gz; then
-          tar -xzf copilot.tar.gz;
-          if [ -f copilot ]; then
-            chmod +x copilot;
-            rm -f copilot.tar.gz;
-            exit 0;
-          fi;
-        fi;
-      done;
-      echo "No copilot binary found. Using manual provider instead.";
-      exit 0
+    user: "0"
+    command: sh -c "set -eux; cd /work; for file in copilot-linux-x64.tar.gz copilot-linux-arm64.tar.gz copilot-linuxmusl-x64.tar.gz copilot-linuxmusl-arm64.tar.gz; do url=\"https://github.com/github/copilot-cli/releases/latest/download/$$file\"; echo \"Trying $$url\"; if curl -fSL \"$$url\" -o copilot.tar.gz; then tar -xzf copilot.tar.gz; if [ -f copilot ]; then chmod +x copilot; rm -f copilot.tar.gz; exit 0; fi; fi; done; echo \"No copilot binary found. Using manual provider instead.\"; exit 0"
     volumes:
       - copilot_bin:/work
     restart: "no"
