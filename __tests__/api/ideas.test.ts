@@ -1,11 +1,29 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+
+// Mock Supabase BEFORE importing anything that uses it
+jest.mock('../../lib/supabase', () => ({
+  supabaseServer: jest.fn(() => ({
+    from: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    update: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    insert: jest.fn().mockReturnThis(),
+    single: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis()
+  })),
+  supabase: jest.fn()
+}))
+
+// Mock Clerk
+jest.mock('@clerk/nextjs/server', () => ({
+  getAuth: jest.fn()
+}))
+
 import handler from '../../pages/api/ideas/index'
 import { getAuth } from '@clerk/nextjs/server'
 import { supabaseServer } from '../../lib/supabase'
 
-// Mock dependencies
-jest.mock('@clerk/nextjs/server')
-jest.mock('../../lib/supabase')
 
 const mockGetAuth = getAuth as jest.MockedFunction<typeof getAuth>
 const mockSupabaseServer = supabaseServer as jest.MockedFunction<typeof supabaseServer>
