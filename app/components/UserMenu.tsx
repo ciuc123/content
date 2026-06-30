@@ -36,6 +36,7 @@ export function UserMenu() {
     }
   }, [isOpen])
 
+
   const handleSignInClick = () => {
     // Save current path to localStorage before redirecting to sign-in
     if (pathname && pathname !== '/sign-in' && pathname !== '/sign-up') {
@@ -44,6 +45,16 @@ export function UserMenu() {
       }
     }
   }
+
+  // Initialize user in database when they sign in
+  useEffect(() => {
+    if (isSignedIn) {
+      fetch('/api/settings/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }).catch(err => console.error('Failed to initialize user:', err))
+    }
+  }, [isSignedIn])
 
   if (!isSignedIn) {
     return (
