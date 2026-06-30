@@ -17,9 +17,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         data[key] = fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : ''
       }
       return res.status(200).json({ ok: true, data })
-    } catch (err: any) {
-      return res.status(500).json({ error: St1ring(err) })
-    }
+     } catch (err: any) {
+       return res.status(500).json({ error: String(err) })
+     }
   }
 
   if (req.method === 'POST') {
