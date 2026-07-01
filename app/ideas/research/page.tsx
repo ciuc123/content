@@ -42,39 +42,49 @@ export default function IdeaResearchPage() {
     }
   }, [ideas, selected?.id])
 
-  async function saveResearch(e?: React.FormEvent) {
-    e?.preventDefault()
-    setMessage(null)
-    try {
-      if (!content.trim()) {
-        setMessage('Please enter research content')
-        return
-      }
+   async function saveResearch(e?: React.FormEvent) {
+     e?.preventDefault()
+     setMessage(null)
+     try {
+       if (!content.trim()) {
+         setMessage('Please enter research content')
+         return
+       }
 
-      const idx = ideas.findIndex((i) => i === selected)
-      const res = await fetch('/api/research', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: idx, idea: selected, content })
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || 'Failed')
+       const idx = ideas.findIndex((i) => i === selected)
+       const res = await fetch('/api/research', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ index: idx, idea: selected, content })
+       })
+       const json = await res.json()
+       if (!res.ok) throw new Error(json?.error || 'Failed')
 
-      // Update status in background (fire-and-forget for authenticated users)
-      if (isSignedIn && selected?.id) {
-        fetch('/api/ideas', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idea_id: selected.id, status: 'generated' })
-        }).catch(() => {})
-      }
+       // Update status in background (fire-and-forget for authenticated users)
+       if (isSignedIn && selected?.id) {
+         fetch('/api/ideas', {
+           method: 'PATCH',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ idea_id: selected.id, status: 'generated' })
+         }).catch(() => {})
+       }
 
-      setMessage('✓ Research saved. Ready to generate content!')
-      setContent('')
-    } catch (err: any) {
-      setMessage(String(err))
-    }
-  }
+       setMessage('✓ Research saved. Ready to generate content!')
+       setContent('')
+
+       // Reload ideas to reflect updated status
+       if (isSignedIn) {
+         setTimeout(() => {
+           fetch('/api/ideas')
+             .then((r) => r.json())
+             .then((d) => setIdeas(d.ideas || []))
+             .catch(() => {})
+         }, 500) // Wait 500ms for database to update
+       }
+     } catch (err: any) {
+       setMessage(String(err))
+     }
+   }
 
   async function generateResearchViaAI() {
     if (!selected?.title) {
@@ -212,21 +222,57 @@ export default function IdeaResearchPage() {
         </div>
       )}
 
-      <form onSubmit={saveResearch} className="mt-4">
-        <label className="block text-sm font-medium mb-2">Research Content (Markdown)</label>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={12}
-          className="w-full border p-2 rounded"
-          placeholder="Paste research output from GitHub Copilot here..."
-        />
-        <div className="mt-2 flex gap-2">
-          <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Research</button>
-        </div>
-      </form>
+       <form onSubmit={saveResearch} className="mt-4">
+         <label className="block text-sm font-medium mb-2">Research Content (Markdown)</label>
+         <textarea
+           value={content}
+           onChange={(e) => setContent(e.target.value)}
+           rows={12}
+           className="w-full border p-2 rounded"
+           placeholder="Paste research output from GitHub Copilot here..."
+         />
+         <div className="mt-2 flex gap-2">
+           <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Research</button>
+         </div>
+       </form>
 
-      {message && <div className="mt-4 p-3 text-sm bg-green-50 border border-green-200 rounded">{message}</div>}
+       {message && <div className="mt-4 p-3 text-sm bg-green-50 border border-green-200 rounded">{message}</div>}
+
+       {/* Ideas & Research Status Table */}
+       {isSignedIn && ideas.length > 0 && (
+         <div className="mt-8">
+           <h2 className="text-xl font-bold mb-4">Ideas & Research Status</h2>
+           <div className="overflow-x-auto border rounded">
+             <table className="w-full text-sm">
+               <thead className="bg-gray-100 border-b">
+                 <tr>
+                   <th className="px-4 py-2 text-left">Title</th>
+                   <th className="px-4 py-2 text-left">Status</th>
+                   <th className="px-4 py-2 text-left">Why It Matters</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {ideas.map((idea) => (
+                   <tr key={idea.id} className={`border-b ${idea === selected ? 'bg-blue-50' : ''}`}>
+                     <td className="px-4 py-2 font-medium">{idea.title}</td>
+                     <td className="px-4 py-2">
+                       <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                         idea.status === 'generated' ? 'bg-green-100 text-green-800' :
+                         idea.status === 'researched' ? 'bg-blue-100 text-blue-800' :
+                         idea.status === 'new' ? 'bg-gray-100 text-gray-800' :
+                         'bg-yellow-100 text-yellow-800'
+                       }`}>
+                         {idea.status || 'new'}
+                       </span>
+                     </td>
+                     <td className="px-4 py-2 text-gray-600">{idea.why_it_matters}</td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+         </div>
+       )}
     </div>
   )
 }

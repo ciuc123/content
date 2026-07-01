@@ -89,43 +89,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
   }
 
-   if (req.method === 'PATCH') {
-     // Unauthenticated users cannot update ideas in database
-     if (!userId) {
-       return res.status(400).json({ error: 'Sign in to update ideas. Using browser storage locally.' })
-     }
-     try {
-       const { idea_id } = req.body
-       if (!idea_id) return res.status(400).json({ error: 'idea_id is required' })
+    if (req.method === 'PATCH') {
+      // Unauthenticated users cannot update ideas in database
+      if (!userId) {
+        return res.status(400).json({ error: 'Sign in to update ideas. Using browser storage locally.' })
+      }
+      try {
+        const { idea_id, status } = req.body
+        if (!idea_id) return res.status(400).json({ error: 'idea_id is required' })
 
-       // Use server-side Supabase client to update status to 'researched'
-       const supabaseAdmin = supabaseServer()
+        // Default to 'researched' if no status provided (backward compatibility)
+        const newStatus = status || 'researched'
 
-       // Reset all ideas to 'new' status for this user first
-       await supabaseAdmin
-         .from('ideas')
-         .update({ status: 'new' })
-         .eq('user_id', userId)
+        // Use server-side Supabase client to update status
+        const supabaseAdmin = supabaseServer()
 
-       // Set the selected idea to 'researched' status
-       const { data, error } = await supabaseAdmin
-         .from('ideas')
-         .update({ status: 'researched' })
-         .eq('id', idea_id)
-         .eq('user_id', userId)
-         .select()
+        // Reset all ideas to 'new' status for this user first
+        await supabaseAdmin
+          .from('ideas')
+          .update({ status: 'new' })
+          .eq('user_id', userId)
 
-       if (error) {
-         console.error('Failed to update idea status:', error)
-         return res.status(500).json({ error: error.message })
-       }
+        // Set the selected idea to the requested status
+        const { data, error } = await supabaseAdmin
+          .from('ideas')
+          .update({ status: newStatus })
+          .eq('id', idea_id)
+          .eq('user_id', userId)
+          .select()
 
-       return res.status(200).json({ ok: true, idea: data?.[0] })
-     } catch (err: any) {
-       console.error('Ideas PATCH error:', err)
-       return res.status(500).json({ error: String(err) })
-     }
-   }
+        if (error) {
+          console.error('Failed to update idea status:', error)
+          return res.status(500).json({ error: error.message })
+        }
+
+        return res.status(200).json({ ok: true, idea: data?.[0] })
+      } catch (err: any) {
+        console.error('Ideas PATCH error:', err)
+        return res.status(500).json({ error: String(err) })
+      }
+    }
 
    res.setHeader('Allow', ['GET', 'POST', 'PATCH'])
    res.status(405).end('Method Not Allowed')

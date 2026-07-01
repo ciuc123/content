@@ -65,3 +65,4 @@ CREATE INDEX IF NOT EXISTS idx_research_user_idea ON research(user_id, idea_id);
 CREATE INDEX IF NOT EXISTS idx_gen_content_user ON generated_content(user_id);
 CREATE INDEX IF NOT EXISTS idx_gen_content_user_idea ON generated_content(user_id, idea_id);
 
+
