@@ -49,27 +49,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (typeof content !== 'string') return res.status(400).json({ error: 'content is required' })
 
       if (USE_SUPABASE && userId) {
-        // Use the idea_id from the idea object passed from frontend
-        const ideaId = idea?.id
-        if (!ideaId) {
-          return res.status(400).json({ error: 'Idea ID is required. Please select an idea first.' })
-        }
+        // For authenticated users, save research with the idea data
+        // The idea might not have a database ID yet (if just generated)
 
-        // Verify the idea belongs to this user
-        const { data: ideaRecord, error: ideaError } = await supabase
-          .from('ideas')
-          .select('id')
-          .eq('id', ideaId)
-          .eq('user_id', userId)
-          .single()
+        let ideaId = idea?.id
 
-        if (ideaError || !ideaRecord) {
-          return res.status(400).json({ error: 'No idea found or access denied' })
+        // If idea has an ID, verify it exists and belongs to user
+        if (ideaId) {
+          const { data: ideaRecord, error: ideaError } = await supabase
+            .from('ideas')
+            .select('id')
+            .eq('id', ideaId)
+            .eq('user_id', userId)
+            .single()
+
+          if (ideaError || !ideaRecord) {
+            return res.status(400).json({ error: 'Idea not found or access denied' })
+          }
+        } else if (idea?.title) {
+          // If no ID but has title, try to find by title (for generated ideas)
+          const { data: ideaRecord, error: ideaError } = await supabase
+            .from('ideas')
+            .select('id')
+            .eq('title', idea.title)
+            .eq('user_id', userId)
+            .single()
+
+          if (!ideaError && ideaRecord) {
+            ideaId = ideaRecord.id
+          }
+          // If not found, we'll create a research entry without an idea_id
+          // (in case the idea needs to be saved separately first)
         }
 
         const entry: Research = {
           user_id: userId,
-          idea_id: ideaId,
+          idea_id: ideaId || null, // Can be null if idea hasn't been saved yet
           content,
         }
 

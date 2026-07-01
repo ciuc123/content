@@ -55,7 +55,7 @@ export interface Idea {
 export interface Research {
   id?: string
   user_id: string
-  idea_id: string
+  idea_id?: string | null  // Can be null if idea hasn't been saved yet
   content: string
   created_at?: string
 }
