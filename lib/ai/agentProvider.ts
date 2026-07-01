@@ -39,8 +39,6 @@ For each idea provide:
 - virality_score: 1-10 rating
 - business_score: 1-10 rating
 
-IMPORTANT: Do NOT search the web or attempt to fetch external content. Generate ideas based on your training data only.
-
 Output ONLY valid JSON array, no extra text.`
 
     const response = await this.baseProvider.generate(prompt, context)
@@ -80,8 +78,6 @@ Include:
 - Real-world examples
 - Best practices
 - Key statistics (if available)
-
-IMPORTANT: Do NOT search the web or attempt to fetch external content. Generate research based on your training data only.
 
 Format as clear paragraphs, suitable for a blog post.`
 
@@ -129,7 +125,6 @@ Requirements:
 - Include 2-3 relevant hashtags
 - Call-to-action at the end
 - Start with a hook (question or interesting statement)
-- Do NOT search the web or attempt to fetch external content
 
 Output ONLY the LinkedIn post content.`
 
@@ -148,7 +143,6 @@ Requirements:
 - Add subheadings for each section
 - Professional, informative tone
 - Include a call-to-action in conclusion
-- Do NOT search the web or attempt to fetch external content
 
 Output ONLY the blog post content (no frontmatter).`
 
@@ -167,7 +161,6 @@ Requirements:
 - Include 1-2 key takeaways
 - End with a question for reader engagement
 - Suitable for email newsletters
-- Do NOT search the web or attempt to fetch external content
 
 Output ONLY the newsletter article content.`
 
