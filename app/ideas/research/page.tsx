@@ -15,6 +15,7 @@ export default function IdeaResearchPage() {
   const [importing, setImporting] = useState(false)
   const [importText, setImportText] = useState('')
   const [aiGenerated, setAiGenerated] = useState(false)
+  const [savingResearch, setSavingResearch] = useState(false)
 
    useEffect(() => {
      // Check sessionStorage first for immediate display (non-blocking)
@@ -48,6 +49,7 @@ export default function IdeaResearchPage() {
 
    async function saveResearch(e?: React.FormEvent) {
      e?.preventDefault()
+     setSavingResearch(true)
      setMessage(null)
      try {
        if (!content.trim()) {
@@ -87,6 +89,8 @@ export default function IdeaResearchPage() {
        }
      } catch (err: any) {
        setMessage(String(err))
+     } finally {
+       setSavingResearch(false)
      }
    }
 
@@ -253,7 +257,9 @@ export default function IdeaResearchPage() {
            placeholder="Paste research output from GitHub Copilot here..."
          />
          <div className="mt-2 flex gap-2">
-           <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Research</button>
+           <button type="submit" disabled={savingResearch} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+             {savingResearch ? '⏳ Saving...' : 'Save Research'}
+           </button>
          </div>
        </form>
 

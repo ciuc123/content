@@ -22,6 +22,7 @@ export default function IdeasPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [hasLoadedAuth, setHasLoadedAuth] = useState(false)
+  const [isLoadingIdeas, setIsLoadingIdeas] = useState(true)
   const [topic, setTopic] = useState('')
   const [generateLoading, setGenerateLoading] = useState(false)
   const [ideaCount, setIdeaCount] = useState(10)
@@ -32,6 +33,7 @@ export default function IdeasPage() {
        setHasLoadedAuth(true)
 
        if (isSignedIn) {
+         setIsLoadingIdeas(true)
          // User is authenticated - load from API (Supabase)
          fetch('/api/ideas')
            .then((r) => {
@@ -40,6 +42,7 @@ export default function IdeasPage() {
            })
            .then((d) => {
              setIdeas(d.ideas || [])
+             setIsLoadingIdeas(false)
 
              // After loading from server, check if there's local data to migrate
              const localIdeas = localStorage.getItem(STORAGE_KEY)
@@ -87,11 +90,13 @@ export default function IdeasPage() {
            .catch((err) => {
              console.error('Failed to load ideas:', err)
              setIdeas([])
+             setIsLoadingIdeas(false)
            })
        } else {
          // User is not authenticated - load from localStorage
          const stored = localStorage.getItem(STORAGE_KEY)
          setIdeas(stored ? JSON.parse(stored) : [])
+         setIsLoadingIdeas(false)
        }
      }
    }, [isSignedIn])
@@ -355,7 +360,11 @@ export default function IdeasPage() {
 
       <div className="mt-6">
         <h2 className="text-lg font-medium mb-4">Ideas ({ideas.length})</h2>
-        {ideas.length === 0 ? (
+        {isLoadingIdeas ? (
+          <div className="p-4 text-center text-gray-500">
+            <p>⏳ Loading ideas...</p>
+          </div>
+        ) : ideas.length === 0 ? (
           <p className="text-gray-500">No ideas yet. Generate some with Copilot and import them above.</p>
         ) : (
           <table className="min-w-full table-auto border-collapse">
