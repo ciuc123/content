@@ -145,7 +145,7 @@ export default function IdeasPage() {
          const updated = [
            ...existing,
            ...newIdeas.map((idea: any) => ({
-             id: 'idea_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+             id: 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
              ...idea,
              created_at: new Date().toISOString(),
            }))
@@ -167,15 +167,62 @@ export default function IdeasPage() {
        // Store selected idea in sessionStorage immediately (non-blocking)
        sessionStorage.setItem('selected_idea', JSON.stringify(idea))
 
-       // Async background call to update status in Supabase (fire-and-forget for authenticated users)
-       if (isSignedIn && idea.id) {
-         fetch('/api/ideas', {
-           method: 'PATCH',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ idea_id: idea.id })
-         }).catch(() => {
-           // Silently fail - user experience not blocked
-         })
+       // If user is signed in, ensure the idea is persisted to the server before navigating
+       if (isSignedIn) {
+         const idStr = idea?.id ? String(idea.id) : ''
+         const isLocal = !idea?.id || idStr.startsWith('local_') || idStr.startsWith('idea_')
+         let serverIdea = idea
+
+         if (isLocal) {
+           // Create the idea on the server so it has a proper DB id
+           const res = await fetch('/api/ideas', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ payload: [{
+               title: idea.title,
+               why_it_matters: idea.why_it_matters,
+               virality_score: idea.virality_score,
+               business_score: idea.business_score,
+             }] })
+           })
+
+           const json = await res.json().catch(() => ({}))
+
+           if (!res.ok) {
+             // Show error and do not navigate to research (must be synced first)
+             setMessage(json?.error || 'Could not sync idea to cloud. Please try again.')
+             return
+           }
+
+           // Prefer explicit `inserted` return from API
+           if (json?.inserted && Array.isArray(json.inserted) && json.inserted.length > 0) {
+             serverIdea = json.inserted[0]
+           } else if (json?.count && json.count > 0) {
+             // Fallback: try to refresh list and find the created idea by title
+             try {
+               const listRes = await fetch('/api/ideas')
+               if (listRes.ok) {
+                 const listJson = await listRes.json()
+                 const found = (listJson.ideas || []).find((i: any) => i.title === idea.title && i.why_it_matters === idea.why_it_matters)
+                 if (found) serverIdea = found
+               }
+             } catch (e) {
+               // ignore
+             }
+           }
+
+           // Update session storage with the server-backed idea
+           sessionStorage.setItem('selected_idea', JSON.stringify(serverIdea))
+         }
+
+         // Mark the idea as selected on the server (use status 'selected')
+         if (serverIdea?.id) {
+           fetch('/api/ideas', {
+             method: 'PATCH',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ idea_id: serverIdea.id, status: 'selected' })
+           }).catch(() => {})
+         }
        }
 
        setMessage('✓ Idea selected')

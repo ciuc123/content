@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuth } from '@clerk/nextjs/server'
 import fs from 'fs'
 import path from 'path'
-import { supabase, type Research } from '../../../lib/supabase'
+import { supabaseServer, type Research } from '../../../lib/supabase'
 
 const USE_SUPABASE = process.env.USE_SUPABASE === 'true'
 const dataFile = path.join(process.cwd(), 'data', 'research.json')
@@ -24,6 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   if (req.method === 'GET') {
     try {
       if (USE_SUPABASE && userId) {
+        const supabase = supabaseServer()
         const { data, error } = await supabase
           .from('research')
           .select('*')
@@ -56,6 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
         // If idea has an ID, verify it exists and belongs to user
         if (ideaId) {
+          const supabase = supabaseServer()
           const { data: ideaRecord, error: ideaError } = await supabase
             .from('ideas')
             .select('id')
@@ -68,6 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           }
         } else if (idea?.title) {
           // If no ID but has title, try to find by title (for generated ideas)
+          const supabase = supabaseServer()
           const { data: ideaRecord, error: ideaError } = await supabase
             .from('ideas')
             .select('id')
@@ -88,6 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           content,
         }
 
+        const supabase = supabaseServer()
         const { data: inserted, error } = await supabase
           .from('research')
           .insert([entry])

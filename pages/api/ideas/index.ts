@@ -63,6 +63,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // Use server-side Supabase client to bypass RLS and insert ideas
       const supabaseAdmin = supabaseServer()
       let count = 0
+      const inserted: any[] = []
+
       for (const idea of ideas) {
         const { data, error } = await supabaseAdmin
           .from('ideas')
@@ -74,15 +76,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             business_score: idea.business_score,
           })
           .select()
-        
+
         if (error) {
           console.error(`Failed to create idea "${idea.title}":`, error)
         } else {
           count++
+          if (Array.isArray(data) && data.length > 0) {
+            inserted.push(data[0])
+          }
         }
       }
 
-      return res.status(200).json({ ok: true, count })
+      return res.status(200).json({ ok: true, count, inserted })
     } catch (err: any) {
       console.error('Ideas POST error:', err)
       return res.status(500).json({ error: String(err) })
