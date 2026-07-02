@@ -76,7 +76,6 @@ export default function IdeaResearchPage() {
         }
 
        setMessage('✓ Research saved. Ready to generate content!')
-       setContent('')
 
        // Reload ideas to reflect updated status
        if (isSignedIn) {
