@@ -47,7 +47,7 @@ export interface Idea {
   why_it_matters?: string
   virality_score?: number
   business_score?: number
-  status?: 'new' | 'selected' | 'researched' | 'generated' | 'published' | 'archived'
+  status?: 'new' | 'selected' | 'research-imported' | 'research-generated' | 'published' | 'archived'
   created_at?: string
   updated_at?: string
 }

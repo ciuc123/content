@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 
 export default function IdeaResearchPage() {
   const { isSignedIn } = useAuth()
+  const router = useRouter()
   const [ideas, setIdeas] = useState<any[]>([])
   const [selected, setSelected] = useState<any | null>(null)
   const [content, setContent] = useState('')
@@ -12,35 +14,37 @@ export default function IdeaResearchPage() {
   const [aiLoading, setAiLoading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importText, setImportText] = useState('')
+  const [aiGenerated, setAiGenerated] = useState(false)
 
-  useEffect(() => {
-    // Check sessionStorage first for immediate display (non-blocking)
-    const stored = sessionStorage.getItem('selected_idea')
-    if (stored) {
-      try {
-        const idea = JSON.parse(stored)
-        setSelected(idea)
-      } catch (e) {
-        console.error('Failed to parse stored idea:', e)
-      }
-    }
+   useEffect(() => {
+     // Check sessionStorage first for immediate display (non-blocking)
+     const stored = sessionStorage.getItem('selected_idea')
+     if (stored) {
+       try {
+         const idea = JSON.parse(stored)
+         setSelected(idea)
+         setAiGenerated(false)
+       } catch (e) {
+         console.error('Failed to parse stored idea:', e)
+       }
+     }
 
-    // Load all ideas from API (for signed-in users)
-    if (isSignedIn) {
-      fetch('/api/ideas')
-        .then((r) => r.json())
-        .then((d) => setIdeas(d.ideas || []))
-        .catch(() => setIdeas([]))
-    }
-  }, [isSignedIn])
+     // Load all ideas from API (for signed-in users)
+     if (isSignedIn) {
+       fetch('/api/ideas')
+         .then((r) => r.json())
+         .then((d) => setIdeas(d.ideas || []))
+         .catch(() => setIdeas([]))
+     }
+   }, [isSignedIn])
 
-  useEffect(() => {
-    // If we loaded ideas from API and have one with 'researched' status, sync it
-    if (ideas.length > 0 && !selected?.id) {
-      const researched = ideas.find((i) => i.status === 'researched')
-      if (researched) setSelected(researched)
-    }
-  }, [ideas, selected?.id])
+   useEffect(() => {
+     // If we loaded ideas from API and have one with 'research-imported' or 'research-generated' status, sync it
+     if (ideas.length > 0 && !selected?.id) {
+       const researched = ideas.find((i) => i.status === 'research-imported' || i.status === 'research-generated')
+       if (researched) setSelected(researched)
+     }
+   }, [ideas, selected?.id])
 
    async function saveResearch(e?: React.FormEvent) {
      e?.preventDefault()
@@ -60,14 +64,14 @@ export default function IdeaResearchPage() {
        const json = await res.json()
        if (!res.ok) throw new Error(json?.error || 'Failed')
 
-       // Update status in background (fire-and-forget for authenticated users)
-       if (isSignedIn && selected?.id) {
-         fetch('/api/ideas', {
-           method: 'PATCH',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ idea_id: selected.id, status: 'generated' })
-         }).catch(() => {})
-       }
+        // Update status in background (fire-and-forget for authenticated users)
+        if (isSignedIn && selected?.id) {
+          fetch('/api/ideas', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idea_id: selected.id, status: aiGenerated ? 'research-generated' : 'research-imported' })
+          }).catch(() => {})
+        }
 
        setMessage('✓ Research saved. Ready to generate content!')
        setContent('')
@@ -114,14 +118,15 @@ export default function IdeaResearchPage() {
         return
       }
 
-      if (json.success && json.data) {
-        // Extract research from nested data structure
-        const researchContent = json.data.research || json.data
-        setContent(typeof researchContent === 'string' ? researchContent : JSON.stringify(researchContent))
-        setMessage('✓ Research generated! Review and click "Save Research" to continue.')
-      } else {
-        throw new Error('Invalid response format from AI')
-      }
+       if (json.success && json.data) {
+         // Extract research from nested data structure
+         const researchContent = json.data.research || json.data
+         setContent(typeof researchContent === 'string' ? researchContent : JSON.stringify(researchContent))
+         setAiGenerated(true)
+         setMessage('✓ Research generated! Review and click "Save Research" to continue.')
+       } else {
+         throw new Error('Invalid response format from AI')
+       }
     } catch (err: any) {
       setMessage('Error generating research: ' + String(err) + '. You can try the manual method below.')
     } finally {
@@ -129,36 +134,49 @@ export default function IdeaResearchPage() {
     }
   }
 
-  async function handleImportResearch(e?: React.FormEvent) {
-    e?.preventDefault()
-    setImporting(true)
-    setMessage(null)
-    try {
-      if (!importText.trim()) {
-        setMessage('Please paste research content')
-        setImporting(false)
-        return
-      }
+   async function handleImportResearch(e?: React.FormEvent) {
+     e?.preventDefault()
+     setImporting(true)
+     setMessage(null)
+     try {
+       if (!importText.trim()) {
+         setMessage('Please paste research content')
+         setImporting(false)
+         return
+       }
 
-      // Try to parse as JSON first (for structured research)
-      let researchContent = ''
-      try {
-        const parsed = JSON.parse(importText)
-        researchContent = parsed.content || JSON.stringify(parsed, null, 2)
-      } catch {
-        // Not JSON, treat as plain text
-        researchContent = importText.trim()
-      }
+       // Try to parse as JSON first (for structured research)
+       let researchContent = ''
+       try {
+         const parsed = JSON.parse(importText)
+         researchContent = parsed.content || JSON.stringify(parsed, null, 2)
+       } catch {
+         // Not JSON, treat as plain text
+         researchContent = importText.trim()
+       }
 
-      setContent(researchContent)
-      setImportText('')
-      setMessage('✓ Research imported! Review and click "Save Research" to continue.')
-    } catch (err: any) {
-      setMessage('Error importing research: ' + String(err))
-    } finally {
-      setImporting(false)
-    }
-  }
+       setContent(researchContent)
+       setAiGenerated(false)
+       setImportText('')
+       setMessage('✓ Research imported! Review and click "Save Research" to continue.')
+     } catch (err: any) {
+       setMessage('Error importing research: ' + String(err))
+     } finally {
+       setImporting(false)
+     }
+   }
+
+   async function handleTakeFurther() {
+     try {
+       // Keep selected idea in sessionStorage for continuity
+       if (selected?.id) {
+         sessionStorage.setItem('selected_idea', JSON.stringify(selected))
+       }
+       router.push('/ideas/generate')
+     } catch (err: any) {
+       setMessage('Error: ' + String(err))
+     }
+   }
 
   if (!selected) {
     return (
@@ -173,6 +191,9 @@ export default function IdeaResearchPage() {
     <div className="p-8">
       <h1 className="text-2xl font-bold">Research: {selected.title}</h1>
       <p className="mt-2 text-sm text-gray-600">
+        <strong>Why it matters:</strong> {selected.why_it_matters}
+      </p>
+      <p className="mt-4 text-sm text-gray-600">
         💡 <strong>How to use:</strong><br/>
         1. {isSignedIn ? 'Click "Generate via AI" below or ' : ''}Ask GitHub Copilot: "Research this topic: {selected.title}. Why it matters: {selected.why_it_matters}"<br/>
         2. Paste the research output below<br/>
@@ -236,43 +257,17 @@ export default function IdeaResearchPage() {
          </div>
        </form>
 
-       {message && <div className="mt-4 p-3 text-sm bg-green-50 border border-green-200 rounded">{message}</div>}
+       <div className="mt-6 flex gap-2">
+         <button
+           onClick={handleTakeFurther}
+           className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+         >
+           Take Further
+         </button>
+         <a href="/ideas" className="px-4 py-2 border rounded hover:bg-gray-50">Back to Ideas</a>
+       </div>
 
-       {/* Ideas & Research Status Table */}
-       {isSignedIn && ideas.length > 0 && (
-         <div className="mt-8">
-           <h2 className="text-xl font-bold mb-4">Ideas & Research Status</h2>
-           <div className="overflow-x-auto border rounded">
-             <table className="w-full text-sm">
-               <thead className="bg-gray-100 border-b">
-                 <tr>
-                   <th className="px-4 py-2 text-left">Title</th>
-                   <th className="px-4 py-2 text-left">Status</th>
-                   <th className="px-4 py-2 text-left">Why It Matters</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {ideas.map((idea) => (
-                   <tr key={idea.id} className={`border-b ${idea === selected ? 'bg-blue-50' : ''}`}>
-                     <td className="px-4 py-2 font-medium">{idea.title}</td>
-                     <td className="px-4 py-2">
-                       <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                         idea.status === 'generated' ? 'bg-green-100 text-green-800' :
-                         idea.status === 'researched' ? 'bg-blue-100 text-blue-800' :
-                         idea.status === 'new' ? 'bg-gray-100 text-gray-800' :
-                         'bg-yellow-100 text-yellow-800'
-                       }`}>
-                         {idea.status || 'new'}
-                       </span>
-                     </td>
-                     <td className="px-4 py-2 text-gray-600">{idea.why_it_matters}</td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-         </div>
-       )}
+       {message && <div className="mt-4 p-3 text-sm bg-green-50 border border-green-200 rounded">{message}</div>}
     </div>
   )
 }

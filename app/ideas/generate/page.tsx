@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
 
 export default function IdeaGeneratePage() {
   const { isSignedIn } = useAuth()
-  const [ideas, setIdeas] = useState<any[]>([])
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  const router = useRouter()
   const [selectedIdea, setSelectedIdea] = useState<any | null>(null)
   const [research, setResearch] = useState<string>('')
   const [linkedin, setLinkedin] = useState('')
@@ -16,52 +16,60 @@ export default function IdeaGeneratePage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/ideas')
-      .then((r) => r.json())
-      .then((d) => setIdeas(d.ideas || []))
-      .catch(() => setIdeas([]))
-  }, [])
+    // Check sessionStorage first for immediate display
+    const stored = sessionStorage.getItem('selected_idea')
+    if (stored) {
+      try {
+        const idea = JSON.parse(stored)
+        setSelectedIdea(idea)
 
-  useEffect(() => {
-    const idx = ideas.findIndex((i) => i.status === 'selected')
-    if (idx >= 0) {
-      setSelectedIdx(idx)
-      setSelectedIdea(ideas[idx])
-      // load research
-      fetch('/api/research')
-        .then((r) => r.json())
-        .then((d) => {
-          const entry = (d.research || []).find((r: any) => r.index === idx)
-          if (entry) setResearch(entry.content || '')
-        })
-      // load generated
-      fetch('/api/generated')
-        .then((r) => r.json())
-        .then((d) => {
-          const entry = (d.generated || []).find((g: any) => g.index === idx)
-          if (entry) {
-            setLinkedin(entry.linkedin_post || '')
-            setBlog(entry.blog_post || '')
-            setNewsletter(entry.newsletter_post || '')
-          }
-        })
+        // Load research for this idea
+        if (isSignedIn && idea?.id) {
+          fetch('/api/research')
+            .then((r) => r.json())
+            .then((d) => {
+              const entry = (d.research || []).find((r: any) => r.idea_id === idea.id)
+              if (entry) setResearch(entry.content || '')
+            })
+            .catch(() => {})
+
+          // Load generated content for this idea
+          fetch('/api/generated')
+            .then((r) => r.json())
+            .then((d) => {
+              const entry = (d.generated || []).find((g: any) => g.idea_id === idea.id)
+              if (entry) {
+                setLinkedin(entry.linkedin_post || '')
+                setBlog(entry.blog_post || '')
+                setNewsletter(entry.newsletter_post || '')
+              }
+            })
+            .catch(() => {})
+        }
+      } catch (e) {
+        console.error('Failed to parse stored idea:', e)
+      }
     }
-  }, [ideas])
+  }, [isSignedIn])
 
   async function saveGenerated(e?: React.FormEvent) {
     e?.preventDefault()
-    if (selectedIdx === null) return setMessage('No selected idea')
+    if (!selectedIdea) return setMessage('No selected idea')
     setLoading(true)
     setMessage(null)
     try {
       const res = await fetch('/api/generated', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ index: selectedIdx, idea: selectedIdea, linkedin_post: linkedin, blog_post: blog, newsletter_post: newsletter })
+        body: JSON.stringify({ idea: selectedIdea, linkedin_post: linkedin, blog_post: blog, newsletter_post: newsletter })
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'Failed')
-      setMessage('Generated content saved')
+
+      // Update session storage with idea and persist to next page
+      sessionStorage.setItem('selected_idea', JSON.stringify(selectedIdea))
+
+      setMessage('✓ Generated content saved. Ready to publish!')
     } catch (err: any) {
       setMessage(String(err))
     }
@@ -95,6 +103,15 @@ export default function IdeaGeneratePage() {
       setMessage(`Error generating content: ${String(err)}`)
     }
     setLoading(false)
+  }
+
+  async function handleTakeFurther() {
+    try {
+      sessionStorage.setItem('selected_idea', JSON.stringify(selectedIdea))
+      router.push('/publish')
+    } catch (err: any) {
+      setMessage('Error: ' + String(err))
+    }
   }
 
   if (!selectedIdea) {
@@ -140,7 +157,14 @@ export default function IdeaGeneratePage() {
 
         <div className="flex gap-2 pt-4 border-t">
           <button type="submit" disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{loading ? 'Saving...' : 'Save Generated'}</button>
-          <a href="/publish" className="px-4 py-2 border rounded hover:bg-gray-50">Next: Publish</a>
+          <button 
+            type="button"
+            onClick={handleTakeFurther}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          >
+            Take Further
+          </button>
+          <a href="/ideas" className="px-4 py-2 border rounded hover:bg-gray-50">Back to Ideas</a>
         </div>
       </form>
 
