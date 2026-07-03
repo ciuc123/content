@@ -131,23 +131,46 @@ Output ONLY the LinkedIn post content.`
     return this.baseProvider.generate(prompt, context)
   }
 
-  private async generateBlogPost(idea: any, research: string, context?: string): Promise<string> {
-    const prompt = `Create a blog post for: "${idea.title}"
+   private async generateBlogPost(idea: any, research: string, context?: string): Promise<string> {
+     const prompt = `Create a comprehensive blog post for: "${idea.title}"
 
-Research: ${research}
+Research/Background: ${research}
 
-Requirements:
-- 800-1200 words
-- Structure: Introduction, 3-4 main sections, conclusion
-- Include practical examples
-- Add subheadings for each section
-- Professional, informative tone
-- Include a call-to-action in conclusion
+STRUCTURE REQUIREMENTS (MUST FOLLOW THIS ORDER):
 
-Output ONLY the blog post content (no frontmatter).`
+1. **INTRODUCTION SECTION** (150-200 words)
+   - Start with an engaging hook (question, statistic, or surprising statement)
+   - Clearly state the problem or topic you're addressing
+   - Explain why this matters to the reader
+   - Preview what the post will cover
+   - End with a smooth transition to the first main section
 
-    return this.baseProvider.generate(prompt, context)
-  }
+2. **MAIN CONTENT** (3-4 clearly numbered and titled sections, 150-250 words each)
+   - Each section must have a descriptive heading (use ## for markdown headings)
+   - Start each section with context-setting sentence
+   - Include practical examples, code snippets, or real-world scenarios
+   - Use bullet points where appropriate
+   - Add transitions between sections for flow
+
+3. **CONCLUSION** (100-150 words)
+   - Summarize the key points
+   - Reinforce why this matters
+   - Provide clear next steps or action items
+   - Include a strong call-to-action
+
+FORMATTING GUIDELINES:
+- Use markdown formatting (## for section headings, *** or --- for emphasis)
+- Keep paragraphs to 3-5 sentences max
+- Include code blocks with triple backticks when relevant
+- Maintain professional, informative tone throughout
+- Ensure smooth transitions between sections
+
+CRITICAL: The introduction MUST come first and set up the entire post. Do not start with solutions or details - establish context first.
+
+Output ONLY the blog post content (no frontmatter, no metadata, no title).`
+
+     return this.baseProvider.generate(prompt, context)
+   }
 
   private async generateNewsletterPost(idea: any, research: string, context?: string): Promise<string> {
     const prompt = `Create a newsletter article for: "${idea.title}"
