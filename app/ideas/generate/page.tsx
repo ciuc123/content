@@ -111,10 +111,13 @@ Requirements: 300-500 words, engaging tone, conversational, actionable insights.
 
 Start writing the newsletter piece now:`
 
+      // Use content-type-specific token limits
+      const maxTokens = kind === 'blog' ? 4000 : kind === 'newsletter' ? 2000 : 1500
+
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ prompt, options: { maxTokens } })
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'AI generate failed')

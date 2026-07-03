@@ -12,7 +12,7 @@ export class GitHubModelsProvider implements AIProvider {
    * Try GitHub Models API first (supports web search with proper authentication)
    * This method has pre-authorized web search - no permission needed
    */
-  private async generateWithModelsAPI(prompt: string): Promise<string | null> {
+  private async generateWithModelsAPI(prompt: string, maxTokens: number = 2000): Promise<string | null> {
     const token = this.githubToken || process.env.GITHUB_TOKEN
     if (!token) {
       return null
@@ -30,7 +30,7 @@ export class GitHubModelsProvider implements AIProvider {
         body: JSON.stringify({
           model: 'gpt-4-turbo',
           messages: [{ role: 'user', content: prompt }],
-          max_tokens: 2000,
+          max_tokens: maxTokens,
           temperature: 0.6,
           top_p: 1
         })
@@ -109,12 +109,13 @@ export class GitHubModelsProvider implements AIProvider {
     })
   }
 
-  async generate(prompt: string, context?: string): Promise<string> {
+  async generate(prompt: string, context?: string, options?: Record<string, any>): Promise<string> {
     const fullPrompt = context ? `${prompt}\n\nContext:\n${context}` : prompt
+    const maxTokens = options?.maxTokens || 2000
 
     // Priority 1: Try GitHub Models API (supports web search with web browsing)
     try {
-      const result = await this.generateWithModelsAPI(fullPrompt)
+      const result = await this.generateWithModelsAPI(fullPrompt, maxTokens)
       if (result) {
         return result
       }
