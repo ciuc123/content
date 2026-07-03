@@ -82,10 +82,34 @@ export default function IdeaGeneratePage() {
     setMessage(null)
     try {
       const prompt = kind === 'linkedin'
-        ? `Write a 150-300 word LinkedIn post about this idea:\nTitle: ${selectedIdea.title}\nWhy: ${selectedIdea.why_it_matters}\nResearch: ${research}`
+        ? `You are a professional content writer. Write ONLY a LinkedIn post. No explanations, no metadata, no introduction text. Just the post content.
+
+Title: ${selectedIdea.title}
+Why it matters: ${selectedIdea.why_it_matters}
+Research: ${research}
+
+Requirements: 150-300 words, professional tone, engaging, call-to-action included.
+
+Start writing the LinkedIn post now:`
         : kind === 'blog'
-        ? `Write a long-form blog article (1200-2000 words) about this idea:\nTitle: ${selectedIdea.title}\nWhy: ${selectedIdea.why_it_matters}\nResearch: ${research}`
-        : `Write a short (300-500 word) newsletter piece about this idea:\nTitle: ${selectedIdea.title}\nWhy: ${selectedIdea.why_it_matters}\nResearch: ${research}`
+        ? `You are a professional content writer. Write ONLY a blog article in markdown. No explanations, no metadata, no introduction text. Just the article content.
+
+Title: ${selectedIdea.title}
+Why it matters: ${selectedIdea.why_it_matters}
+Research: ${research}
+
+Requirements: 1200-2000 words, markdown formatted with headers, professional tone, multiple sections, conclusion included.
+
+Start writing the blog article now:`
+        : `You are a professional content writer. Write ONLY a newsletter piece. No explanations, no metadata, no introduction text. Just the newsletter content.
+
+Title: ${selectedIdea.title}
+Why it matters: ${selectedIdea.why_it_matters}
+Research: ${research}
+
+Requirements: 300-500 words, engaging tone, conversational, actionable insights.
+
+Start writing the newsletter piece now:`
 
       const res = await fetch('/api/ai/generate', {
         method: 'POST',
@@ -94,7 +118,17 @@ export default function IdeaGeneratePage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json?.error || 'AI generate failed')
-      const text = json.text || ''
+
+      // Extract just the content (remove any metadata/instructions the AI might have added)
+      let text = json.text || ''
+
+      // Remove common AI response patterns at the beginning
+      text = text
+        .replace(/^[\s\S]*?(?:Done!|Complete!|Created!|Here's|I've|I\s+(?:created|written|generated))[\s\S]*?(?:\n\n|──|—)/i, '')
+        .replace(/^[\s\S]*?(?=^[A-Z][a-z]+ [A-Z]|^#{1,6}\s|^```|^\d+\.|^●|^•|^-\s)/m, '')
+        .replace(/^[^]*?(?:\n\+\s+|Created|Written|Here's).*(?:\n\n|$)/i, '')
+        .trim()
+
       if (kind === 'linkedin') setLinkedin(text)
       else if (kind === 'blog') setBlog(text)
       else setNewsletter(text)

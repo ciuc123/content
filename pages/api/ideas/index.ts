@@ -66,16 +66,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const inserted: any[] = []
 
       for (const idea of ideas) {
-        const { data, error } = await supabaseAdmin
-          .from('ideas')
-          .insert({
-            user_id: userId,
-            title: idea.title,
-            why_it_matters: idea.why_it_matters,
-            virality_score: idea.virality_score,
-            business_score: idea.business_score,
-          })
-          .select()
+         const { data, error } = await supabaseAdmin
+           .from('ideas')
+           .insert({
+             user_id: userId,
+             title: idea.title,
+             why_it_matters: idea.why_it_matters,
+             virality_score: idea.virality_score,
+             business_score: idea.business_score,
+             status: 'new',
+           })
+           .select()
 
         if (error) {
           console.error(`Failed to create idea "${idea.title}":`, error)

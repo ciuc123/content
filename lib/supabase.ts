@@ -93,13 +93,13 @@ export const supabaseHelpers = {
       .order('created_at', { ascending: false })
   },
 
-  async createIdea(userId: string, idea: Omit<Idea, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
-    return supabase
-      .from('ideas')
-      .insert({ ...idea, user_id: userId })
-      .select()
-      .single()
-  },
+   async createIdea(userId: string, idea: Omit<Idea, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+     return supabase
+       .from('ideas')
+       .insert({ status: 'new', ...idea, user_id: userId })
+       .select()
+       .single()
+   },
 
   async updateIdea(ideaId: string, updates: Partial<Idea>) {
     return supabase
