@@ -1,109 +1,134 @@
-# Documentation
+# Ideas Content Engine
 
-Comprehensive documentation for the Ideas Content Engine and its features.
+A minimal, Docker-first web app for generating, researching, and publishing content ideas using GitHub Copilot.
 
-## Folders
-
-### `/auth`
-**AI Authentication & API Key Management**
-
-Documentation for the authentication and encryption implementation that restricts AI features to authenticated users with valid API keys.
-
-- `README.md` - Overview and troubleshooting guide
-- `IMPLEMENTATION.md` - Detailed technical implementation
-
-### `/architecture`
-**System Architecture** (for future consolidation)
-
-### `/features`
-**Feature Documentation** (for future consolidation)
-
-## Quick Links
-
-### Getting Started
-- See root `/README.md` for quick start guide
-
-### Implementation Details
-- See `/docs/auth/IMPLEMENTATION.md` for technical details on auth changes
-
-### Development
-- See `DEVELOPMENT.md` in root directory
-
-## Testing
-
-All features have comprehensive unit tests:
+## Quick Start
 
 ```bash
-# Run all tests
-npm test
+# 1. Setup environment
+cp .env.example .env.local
 
-# Run specific test suite
-npm test -- __tests__/lib/encryption.test.ts
-npm test -- __tests__/lib/clerk.test.ts
-npm test -- __tests__/api/ai.test.ts
-npm test -- __tests__/app/ideas.test.tsx
-npm test -- __tests__/app/generate.test.tsx
+# 2. Start with Docker
+docker compose up --build
+
+# 3. Open browser
+open http://localhost:3000
 ```
 
-## API Endpoints
+## Workflow
 
-### Protected AI Endpoints (Requires Auth)
-- `POST /api/ai/generate` - Generate content (LinkedIn, blog, newsletter)
-- `POST /api/ai/agent` - Run AI agent (generateIdeas, generateResearch, generateContent, fullWorkflow)
-- `POST /api/ai/copilot` - Direct Copilot API integration
+### Manual Mode (Default)
+The app guides you through 4 simple steps:
 
-### Public Data Endpoints (No Auth Required)
-- `GET /api/ideas` - List ideas (empty for unauthenticated users)
-- `POST /api/ideas` - Save ideas (requires sign in for cloud sync)
-- `GET /api/research` - List research
-- `POST /api/research` - Save research
-- `GET /api/generated` - List generated content
-- `POST /api/generated` - Save generated content
+1. **Generate Ideas** - Ask Copilot to generate content ideas (JSON format)
+2. **Select & Research** - Pick an idea and generate research with Copilot
+3. **Generate Content** - Create LinkedIn post, blog article, and newsletter using Copilot
+4. **Publish** - Create a GitHub PR on your blog repository
 
-### Settings Endpoints
-- `POST /api/settings/api-key` - Save encrypted API key (requires auth)
+**Total time: ~10-15 minutes per post**
 
-## Frontend Components
+### Automated Mode (AI Agent)
+Or let the AI Agent handle everything automatically:
 
-### Pages
-- `/ideas` - Idea management (AI button disabled when unsigned)
-- `/ideas/research` - Research addition
-- `/ideas/generate` - Content generation (AI buttons disabled when unsigned)
-- `/publish` - Publishing to GitHub
-- `/settings/api-key` - API key management (requires auth)
+```bash
+curl -X POST http://localhost:3000/api/ai/agent \
+  -H "Content-Type: application/json" \
+  -d '{"action": "fullWorkflow", "topic": "DevOps", "depth": "medium"}'
+```
 
-### Auth Flow
-1. User visits app → can use frontend without signing in
-2. AI button click → disabled, shows "🔒 Sign in to generate"
-3. User signs in → navigates to `/settings/api-key`
-4. Enters API key → encrypted and saved
-5. Can now use all AI features
+**Total time: ~30-80 seconds per post** (depending on AI provider)
 
-## Security
+See [AI Agent Guide](./AI_AGENT_GUIDE.md) for detailed documentation.
 
-- Clerk authentication for user identity
-- Encrypted API keys in Supabase database
-- AES-256-CBC encryption with per-key IVs
-- `ENCRYPTION_KEY` environment variable protection
-- No plaintext keys in logs or storage
-- 401 responses for unauthorized AI requests
+## Key Features
 
-## Performance
+✅ **Minimal Setup** - Docker + file-based storage (no external DB needed)  
+✅ **Copilot-Native** - Copy prompts to Copilot, paste results back  
+✅ **GitHub Integration** - Publish directly to your blog repository as PRs  
+✅ **Single User** - Perfect for personal blogs  
+✅ **Dev-Friendly** - Mock mode for testing without creating real PRs  
 
-- Encryption/decryption happens only during AI requests
-- Cached provider instances for better performance
-- File-based storage for unauthenticated users
-- Cloud sync optional for authenticated users
+## Documentation
 
-## Troubleshooting
+- **[Usage Guide](./USAGE.md)** - Step-by-step workflow guide
+- **[.env.example](./.env.example)** - Environment variables reference
 
-For issues related to authentication and API keys, see `/docs/auth/README.md#Troubleshooting`
+## Tech Stack
 
-## Contributing
+- **Frontend:** Next.js 16+ (App Router) + TypeScript + Tailwind
+- **Backend:** Next.js API routes
+- **Storage:** File-based JSON (upgradeable to Supabase)
+- **Deployment:** Docker + Docker Compose (local dev)
 
-When adding new AI features:
-1. Protect endpoints with `withAIAuth` middleware
-2. Add unit tests in `__tests__` folder
-3. Update documentation in relevant `/docs` subfolder
-4. Ensure frontend buttons are disabled when not signed in
+## Environment Setup
 
+### Minimal (for testing):
+```bash
+DEV_AUTH_DISABLED=true  # Skip auth
+GITHUB_MOCK=true        # Mock PRs (write to local files)
+```
+
+### For Production (GitHub integration):
+```bash
+GITHUB_TOKEN=your_token
+GITHUB_TARGET_REPO=username/blog-repo
+```
+
+## Architecture
+
+```
+App Flow:
+  Ideas Page → Research Page → Generate Page → Publish Page
+        ↓            ↓               ↓              ↓
+     Ideas API   Research API  Generated API  Publish API
+        ↓            ↓               ↓              ↓
+    ideas.json  research.json generated.json  GitHub PR
+```
+
+## Development
+
+### Local Testing
+
+```bash
+# View logs
+docker compose logs web -f
+
+# Access container shell
+docker compose exec web sh
+
+# Restart services
+docker compose restart
+```
+
+### File Locations
+
+- Ideas: `data/ideas.json`
+- Research: `data/research.json`
+- Generated content: `data/generated.json`
+- Knowledge base: `knowledge/cv.md`, `knowledge/experience.md`
+- Published posts (mock): `content/posts/`
+
+## FAQ
+
+**Q: Do I need an API key?**  
+A: No! Uses GitHub Copilot (copy-paste workflow). Optional: GITHUB_TOKEN for PR creation.
+
+**Q: Can I use a different AI provider?**  
+A: Yes, the system supports pluggable providers. Default is ManualProvider (copy-paste).
+
+**Q: Where is my data stored?**  
+A: Locally in JSON files (`data/` directory). Upgrade to Supabase in production.
+
+**Q: Can I publish without creating a real PR?**  
+A: Yes, set `GITHUB_MOCK=true` to write posts to `content/posts/` instead.
+
+## Next Steps
+
+1. Complete one full workflow end-to-end
+2. Refine Copilot prompts based on your domain
+3. Set up GitHub token for real PR creation
+4. Migrate to Supabase for production deployment
+
+## License
+
+MIT

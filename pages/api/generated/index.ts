@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuth } from '@clerk/nextjs/server'
 import fs from 'fs'
 import path from 'path'
-import { supabase, type GeneratedContent } from '../../../lib/supabase'
+import { supabaseServer, type GeneratedContent } from '../../../lib/supabase'
 
 const USE_SUPABASE = process.env.USE_SUPABASE === 'true'
 const dataFile = path.join(process.cwd(), 'data', 'generated.json')
@@ -24,6 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   if (req.method === 'GET') {
     try {
       if (USE_SUPABASE && userId) {
+        const supabase = supabaseServer()
         const { data, error } = await supabase
           .from('generated_content')
           .select('*')
@@ -45,29 +46,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   if (req.method === 'POST') {
     try {
-      const { index, idea, linkedin_post, blog_post, newsletter_post } = req.body
+      const { idea, linkedin_post, blog_post, newsletter_post } = req.body
 
       if (USE_SUPABASE && userId) {
-        // Get the selected idea
-        const { data: ideas, error: ideaError } = await supabase
-          .from('ideas')
-          .select('id')
-          .eq('user_id', userId)
-          .limit(1)
-
-        if (ideaError) throw new Error(ideaError.message)
-        if (!ideas || ideas.length === 0) {
-          return res.status(400).json({ error: 'No idea found' })
+        // Use the provided idea's ID
+        const ideaId = idea?.id
+        if (!ideaId) {
+          return res.status(400).json({ error: 'Idea ID is required' })
         }
 
-        const ideaId = ideas[0].id
+        // Verify the idea belongs to the user
+        const supabase = supabaseServer()
+        const { data: ideaRecord, error: ideaError } = await supabase
+          .from('ideas')
+          .select('id')
+          .eq('id', ideaId)
+          .eq('user_id', userId)
+          .single()
+
+        if (ideaError || !ideaRecord) {
+          return res.status(400).json({ error: 'Idea not found or access denied' })
+        }
+
         const entry: GeneratedContent = {
           user_id: userId,
           idea_id: ideaId,
           linkedin_post,
           blog_post,
           newsletter_post,
-          slug: idea?.title?.toLowerCase().replace(/\s+/g, '-') || '',
+          slug: idea?.title?.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]/g, '') || '',
         }
 
         const { data: inserted, error } = await supabase
@@ -82,7 +89,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         const data = JSON.parse(raw || '[]')
         const entry = {
           id: Date.now().toString(),
-          index,
           idea,
           linkedin_post,
           blog_post,
@@ -102,4 +108,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   res.setHeader('Allow', ['GET', 'POST'])
   res.status(405).end('Method Not Allowed')
 }
-

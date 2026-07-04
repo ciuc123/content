@@ -63,32 +63,79 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // Use server-side Supabase client to bypass RLS and insert ideas
       const supabaseAdmin = supabaseServer()
       let count = 0
+      const inserted: any[] = []
+
       for (const idea of ideas) {
-        const { data, error } = await supabaseAdmin
-          .from('ideas')
-          .insert({
-            user_id: userId,
-            title: idea.title,
-            why_it_matters: idea.why_it_matters,
-            virality_score: idea.virality_score,
-            business_score: idea.business_score,
-          })
-          .select()
-        
+         const { data, error } = await supabaseAdmin
+           .from('ideas')
+           .insert({
+             user_id: userId,
+             title: idea.title,
+             why_it_matters: idea.why_it_matters,
+             virality_score: idea.virality_score,
+             business_score: idea.business_score,
+             status: 'new',
+           })
+           .select()
+
         if (error) {
           console.error(`Failed to create idea "${idea.title}":`, error)
         } else {
           count++
+          if (Array.isArray(data) && data.length > 0) {
+            inserted.push(data[0])
+          }
         }
       }
 
-      return res.status(200).json({ ok: true, count })
+      return res.status(200).json({ ok: true, count, inserted })
     } catch (err: any) {
       console.error('Ideas POST error:', err)
       return res.status(500).json({ error: String(err) })
     }
   }
 
-  res.setHeader('Allow', ['GET', 'POST'])
-  res.status(405).end('Method Not Allowed')
+    if (req.method === 'PATCH') {
+      // Unauthenticated users cannot update ideas in database
+      if (!userId) {
+        return res.status(400).json({ error: 'Sign in to update ideas. Using browser storage locally.' })
+      }
+      try {
+        const { idea_id, status } = req.body
+        if (!idea_id) return res.status(400).json({ error: 'idea_id is required' })
+
+        // Default to 'researched' if no status provided (backward compatibility)
+        const newStatus = status || 'researched'
+
+        // Use server-side Supabase client to update status
+        const supabaseAdmin = supabaseServer()
+
+        // Reset all ideas to 'new' status for this user first
+        await supabaseAdmin
+          .from('ideas')
+          .update({ status: 'new' })
+          .eq('user_id', userId)
+
+        // Set the selected idea to the requested status
+        const { data, error } = await supabaseAdmin
+          .from('ideas')
+          .update({ status: newStatus })
+          .eq('id', idea_id)
+          .eq('user_id', userId)
+          .select()
+
+        if (error) {
+          console.error('Failed to update idea status:', error)
+          return res.status(500).json({ error: error.message })
+        }
+
+        return res.status(200).json({ ok: true, idea: data?.[0] })
+      } catch (err: any) {
+        console.error('Ideas PATCH error:', err)
+        return res.status(500).json({ error: String(err) })
+      }
+    }
+
+   res.setHeader('Allow', ['GET', 'POST', 'PATCH'])
+   res.status(405).end('Method Not Allowed')
 }

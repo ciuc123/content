@@ -47,7 +47,7 @@ export interface Idea {
   why_it_matters?: string
   virality_score?: number
   business_score?: number
-  status?: 'new' | 'selected' | 'researched' | 'generated' | 'published' | 'archived'
+  status?: 'new' | 'selected' | 'research-imported' | 'research-generated' | 'published' | 'archived'
   created_at?: string
   updated_at?: string
 }
@@ -55,7 +55,7 @@ export interface Idea {
 export interface Research {
   id?: string
   user_id: string
-  idea_id: string
+  idea_id?: string | null  // Can be null if idea hasn't been saved yet
   content: string
   created_at?: string
 }
@@ -93,13 +93,13 @@ export const supabaseHelpers = {
       .order('created_at', { ascending: false })
   },
 
-  async createIdea(userId: string, idea: Omit<Idea, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
-    return supabase
-      .from('ideas')
-      .insert({ ...idea, user_id: userId })
-      .select()
-      .single()
-  },
+   async createIdea(userId: string, idea: Omit<Idea, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+     return supabase
+       .from('ideas')
+       .insert({ status: 'new', ...idea, user_id: userId })
+       .select()
+       .single()
+   },
 
   async updateIdea(ideaId: string, updates: Partial<Idea>) {
     return supabase

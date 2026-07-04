@@ -9,11 +9,11 @@ export default withAIAuth(async (req: NextApiRequest, res: NextApiResponse, user
   }
 
   try {
-    const { prompt, context } = req.body
+    const { prompt, context, options } = req.body
     if (!prompt) return res.status(400).json({ error: 'prompt is required' })
     // Pass the user's decrypted API key to the provider
     const provider = getAIProvider(apiKey)
-    const text = await provider.generate(prompt, context)
+    const text = await provider.generate(prompt, context, options)
     return res.status(200).json({ text })
   } catch (err: any) {
     return res.status(500).json({ error: String(err) })

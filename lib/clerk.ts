@@ -49,6 +49,11 @@ export function withClerkAuth(
  * export default withAIAuth(async (req, res, userId, apiKey) => {
  *   // Your handler code - apiKey is already decrypted and ready to use
  * })
+ *
+ * API key priority:
+ * 1. User's encrypted API key from database (users can configure custom keys in settings)
+ * 2. Environment GITHUB_TOKEN (admins can use project-wide token automatically)
+ * 3. None - returns 401 error
  */
 export function withAIAuth(
   handler: (req: NextApiRequest, res: NextApiResponse, userId: string, apiKey: string) => Promise<void>
@@ -69,7 +74,7 @@ export function withAIAuth(
       const supabase = supabaseServer()
       const { data: userRecord, error } = await supabase
         .from('users')
-        .select('api_key_encrypted')
+        .select('api_key_encrypted, is_admin')
         .eq('clerk_id', userId)
         .single()
 
@@ -78,20 +83,30 @@ export function withAIAuth(
         return res.status(401).json({ error: 'API key not found - please add one in settings' })
       }
 
-      if (!userRecord.api_key_encrypted) {
+      let apiKey: string | null = null
+
+      // Priority 1: Check for user's encrypted API key
+      if (userRecord.api_key_encrypted) {
+        try {
+          apiKey = decryptString(userRecord.api_key_encrypted)
+        } catch (err: any) {
+          console.error('Decryption error:', err)
+          return res.status(500).json({ error: 'Failed to decrypt API key' })
+        }
+      }
+
+      // Priority 2: If no user key and user is admin, use environment GITHUB_TOKEN
+      if (!apiKey && userRecord.is_admin && process.env.GITHUB_TOKEN) {
+        apiKey = process.env.GITHUB_TOKEN
+        console.log(`Admin user ${userId} using GITHUB_TOKEN from environment`)
+      }
+
+      // If still no API key, return error
+      if (!apiKey) {
         return res.status(401).json({ error: 'API key not configured - please add one in settings' })
       }
 
-      // Decrypt the API key
-      let apiKey: string
-      try {
-        apiKey = decryptString(userRecord.api_key_encrypted)
-      } catch (err: any) {
-        console.error('Decryption error:', err)
-        return res.status(500).json({ error: 'Failed to decrypt API key' })
-      }
-
-      // Call the handler with the decrypted API key
+      // Call the handler with the API key (decrypted or from environment)
       await handler(req, res, userId, apiKey)
     } catch (error: any) {
       console.error('AI auth error:', error)

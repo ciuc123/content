@@ -22,6 +22,7 @@ export default function IdeasPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [hasLoadedAuth, setHasLoadedAuth] = useState(false)
+  const [isLoadingIdeas, setIsLoadingIdeas] = useState(true)
   const [topic, setTopic] = useState('')
   const [generateLoading, setGenerateLoading] = useState(false)
   const [ideaCount, setIdeaCount] = useState(10)
@@ -32,6 +33,7 @@ export default function IdeasPage() {
        setHasLoadedAuth(true)
 
        if (isSignedIn) {
+         setIsLoadingIdeas(true)
          // User is authenticated - load from API (Supabase)
          fetch('/api/ideas')
            .then((r) => {
@@ -40,6 +42,7 @@ export default function IdeasPage() {
            })
            .then((d) => {
              setIdeas(d.ideas || [])
+             setIsLoadingIdeas(false)
 
              // After loading from server, check if there's local data to migrate
              const localIdeas = localStorage.getItem(STORAGE_KEY)
@@ -87,11 +90,13 @@ export default function IdeasPage() {
            .catch((err) => {
              console.error('Failed to load ideas:', err)
              setIdeas([])
+             setIsLoadingIdeas(false)
            })
        } else {
          // User is not authenticated - load from localStorage
          const stored = localStorage.getItem(STORAGE_KEY)
          setIdeas(stored ? JSON.parse(stored) : [])
+         setIsLoadingIdeas(false)
        }
      }
    }, [isSignedIn])
@@ -145,7 +150,7 @@ export default function IdeasPage() {
          const updated = [
            ...existing,
            ...newIdeas.map((idea: any) => ({
-             id: 'idea_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+             id: 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
              ...idea,
              created_at: new Date().toISOString(),
            }))
@@ -162,51 +167,118 @@ export default function IdeasPage() {
      setLoading(false)
    }
 
-  async function handleSelect(idea: any) {
-    try {
-      // Store selected idea in sessionStorage
-      sessionStorage.setItem('selected_idea', JSON.stringify(idea))
-      setMessage('✓ Idea selected')
-      setTimeout(() => router.push('/ideas/research'), 300)
-    } catch (err: any) {
-      setMessage(String(err))
-    }
-  }
+   async function handleSelect(idea: any) {
+     try {
+       // Store selected idea in sessionStorage immediately (non-blocking)
+       sessionStorage.setItem('selected_idea', JSON.stringify(idea))
 
-  async function handleGenerateIdeas(e?: React.FormEvent) {
-    e?.preventDefault()
-    if (!topic.trim()) {
-      setMessage('Please enter a topic')
-      return
-    }
+       // If user is signed in, ensure the idea is persisted to the server before navigating
+       if (isSignedIn) {
+         const idStr = idea?.id ? String(idea.id) : ''
+         const isLocal = !idea?.id || idStr.startsWith('local_') || idStr.startsWith('idea_')
+         let serverIdea = idea
 
-    setGenerateLoading(true)
-    setMessage(null)
-    try {
-      const res = await fetch('/api/ai/agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generateIdeas',
-          topic: topic.trim(),
-          count: ideaCount
-        })
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json?.error || 'Failed to generate ideas')
+         if (isLocal) {
+           // Create the idea on the server so it has a proper DB id
+           const res = await fetch('/api/ideas', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ payload: [{
+               title: idea.title,
+               why_it_matters: idea.why_it_matters,
+               virality_score: idea.virality_score,
+               business_score: idea.business_score,
+             }] })
+           })
 
-      if (json.success && json.data && Array.isArray(json.data)) {
-        // Populate the text field with the generated ideas as JSON
-        setText(JSON.stringify(json.data, null, 2))
-        setMessage(`✓ Generated ${json.data.length} ideas! Review and click "Import Ideas" to save them.`)
-      } else {
-        throw new Error('Invalid response format from AI')
-      }
-    } catch (err: any) {
-      setMessage('Error generating ideas: ' + String(err) + '. You can try the manual method below.')
-    }
-    setGenerateLoading(false)
-  }
+           const json = await res.json().catch(() => ({}))
+
+           if (!res.ok) {
+             // Show error and do not navigate to research (must be synced first)
+             setMessage(json?.error || 'Could not sync idea to cloud. Please try again.')
+             return
+           }
+
+           // Prefer explicit `inserted` return from API
+           if (json?.inserted && Array.isArray(json.inserted) && json.inserted.length > 0) {
+             serverIdea = json.inserted[0]
+           } else if (json?.count && json.count > 0) {
+             // Fallback: try to refresh list and find the created idea by title
+             try {
+               const listRes = await fetch('/api/ideas')
+               if (listRes.ok) {
+                 const listJson = await listRes.json()
+                 const found = (listJson.ideas || []).find((i: any) => i.title === idea.title && i.why_it_matters === idea.why_it_matters)
+                 if (found) serverIdea = found
+               }
+             } catch (e) {
+               // ignore
+             }
+           }
+
+           // Update session storage with the server-backed idea
+           sessionStorage.setItem('selected_idea', JSON.stringify(serverIdea))
+         }
+
+         // Mark the idea as selected on the server (use status 'selected')
+         if (serverIdea?.id) {
+           fetch('/api/ideas', {
+             method: 'PATCH',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ idea_id: serverIdea.id, status: 'selected' })
+           }).catch(() => {})
+         }
+       }
+
+       setMessage('✓ Idea selected')
+       router.push('/ideas/research')
+     } catch (err: any) {
+       setMessage(String(err))
+     }
+   }
+
+   async function handleGenerateIdeas(e?: React.FormEvent) {
+     e?.preventDefault()
+     if (!topic.trim()) {
+       setMessage('Please enter a topic')
+       return
+     }
+
+     setGenerateLoading(true)
+     setMessage(null)
+     try {
+       const res = await fetch('/api/ai/agent', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           action: 'generateIdeas',
+           topic: topic.trim(),
+           count: ideaCount
+         })
+       })
+       const json = await res.json()
+       if (!res.ok) {
+         // Check if it's an API key configuration issue
+         if (res.status === 401 && json?.error?.includes('API key')) {
+           setMessage(`⚠️ API key not configured. Please go to Settings → API Key and add your GitHub Copilot API key, then try again.`)
+         } else {
+           throw new Error(json?.error || 'Failed to generate ideas')
+         }
+         return
+       }
+
+       if (json.success && json.data && Array.isArray(json.data)) {
+         // Populate the text field with the generated ideas as JSON
+         setText(JSON.stringify(json.data, null, 2))
+         setMessage(`✓ Generated ${json.data.length} ideas! Review and click "Import Ideas" to save them.`)
+       } else {
+         throw new Error('Invalid response format from AI')
+       }
+     } catch (err: any) {
+       setMessage('Error generating ideas: ' + String(err) + '. You can try the manual method below.')
+     }
+     setGenerateLoading(false)
+   }
 
   if (!hasLoadedAuth) {
     return (
@@ -288,7 +360,11 @@ export default function IdeasPage() {
 
       <div className="mt-6">
         <h2 className="text-lg font-medium mb-4">Ideas ({ideas.length})</h2>
-        {ideas.length === 0 ? (
+        {isLoadingIdeas ? (
+          <div className="p-4 text-center text-gray-500">
+            <p>⏳ Loading ideas...</p>
+          </div>
+        ) : ideas.length === 0 ? (
           <p className="text-gray-500">No ideas yet. Generate some with Copilot and import them above.</p>
         ) : (
           <table className="min-w-full table-auto border-collapse">

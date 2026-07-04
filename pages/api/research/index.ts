@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { getAuth } from '@clerk/nextjs/server'
 import fs from 'fs'
 import path from 'path'
-import { supabase, type Research } from '../../../lib/supabase'
+import { supabaseServer, type Research } from '../../../lib/supabase'
 
 const USE_SUPABASE = process.env.USE_SUPABASE === 'true'
 const dataFile = path.join(process.cwd(), 'data', 'research.json')
@@ -24,6 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   if (req.method === 'GET') {
     try {
       if (USE_SUPABASE && userId) {
+        const supabase = supabaseServer()
         const { data, error } = await supabase
           .from('research')
           .select('*')
@@ -49,25 +50,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (typeof content !== 'string') return res.status(400).json({ error: 'content is required' })
 
       if (USE_SUPABASE && userId) {
-        // First get the idea to get its ID
-        const { data: ideas, error: ideaError } = await supabase
-          .from('ideas')
-          .select('id')
-          .eq('user_id', userId)
-          .limit(1)
+        // For authenticated users, save research with the idea data
+        // The idea might not have a database ID yet (if just generated)
 
-        if (ideaError) throw new Error(ideaError.message)
-        if (!ideas || ideas.length === 0) {
-          return res.status(400).json({ error: 'No idea found' })
+        let ideaId = idea?.id
+
+        // If idea has an ID, verify it exists and belongs to user
+        if (ideaId) {
+          const supabase = supabaseServer()
+          const { data: ideaRecord, error: ideaError } = await supabase
+            .from('ideas')
+            .select('id')
+            .eq('id', ideaId)
+            .eq('user_id', userId)
+            .single()
+
+          if (ideaError || !ideaRecord) {
+            return res.status(400).json({ error: 'Idea not found or access denied' })
+          }
+        } else if (idea?.title) {
+          // If no ID but has title, try to find by title (for generated ideas)
+          const supabase = supabaseServer()
+          const { data: ideaRecord, error: ideaError } = await supabase
+            .from('ideas')
+            .select('id')
+            .eq('title', idea.title)
+            .eq('user_id', userId)
+            .single()
+
+          if (!ideaError && ideaRecord) {
+            ideaId = ideaRecord.id
+          }
+          // If not found, we'll create a research entry without an idea_id
+          // (in case the idea needs to be saved separately first)
         }
 
-        const ideaId = ideas[0].id
         const entry: Research = {
           user_id: userId,
-          idea_id: ideaId,
+          idea_id: ideaId || null, // Can be null if idea hasn't been saved yet
           content,
         }
 
+        const supabase = supabaseServer()
         const { data: inserted, error } = await supabase
           .from('research')
           .insert([entry])

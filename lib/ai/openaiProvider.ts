@@ -9,13 +9,15 @@ export class OpenAIProvider implements AIProvider {
     this.model = model
   }
 
-  async generate(prompt: string, context?: string) {
+  async generate(prompt: string, context?: string, options?: Record<string, any>) {
     if (!this.apiKey) throw new Error('OPENAI_API_KEY not set')
+
+    const maxTokens = options?.maxTokens || 1500
 
     const body = {
       model: this.model,
       messages: [{ role: 'user', content: context ? `${prompt}\n\n${context}` : prompt }],
-      max_tokens: 1500,
+      max_tokens: maxTokens,
       temperature: 0.6
     }
 
