@@ -1,0 +1,10 @@
+.agents
+.claude
+.env.local
+.git
+.gitignore
+.idea
+.next
+node_modules
+__test_data__
+__tests__

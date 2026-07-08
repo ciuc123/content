@@ -1,4 +1,3 @@
-import { auth } from '@clerk/nextjs'
 import { getAuth } from '@clerk/nextjs/server'
 import { NextApiRequest, NextApiResponse } from 'next'
 
@@ -7,7 +6,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
  * Use this in Server Components
  */
 export function getAuthUserId() {
-  const { userId } = auth()
+  const { userId } = getAuth()
   if (!userId) {
     throw new Error('User not authenticated')
   }
@@ -121,7 +120,7 @@ export function withAIAuth(
  */
 export async function getCurrentUser() {
   try {
-    const { userId } = auth()
+    const { userId } = getAuth()
     if (!userId) return null
 
     // You can fetch more user info here if needed
