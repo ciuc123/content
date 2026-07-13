@@ -23,14 +23,16 @@ interface AgentResponse {
 const handler = async (req: NextApiRequest, res: NextApiResponse<AgentResponse>, userId: string, apiKey: string) => {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST'])
-    return res.status(405).end('Method Not Allowed')
+    res.status(405).end('Method Not Allowed')
+    return
   }
 
   try {
     const { action, topic, idea, research, context, count = 10, depth = 'medium' } = req.body as AgentRequest
 
     if (!action) {
-      return res.status(400).json({ success: false, error: 'action is required' })
+      res.status(400).json({ success: false, error: 'action is required' })
+      return
     }
 
     // Create agent with user's decrypted API key
@@ -39,37 +41,44 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<AgentResponse>,
     switch (action) {
       case 'generateIdeas': {
         if (!topic) {
-          return res.status(400).json({ success: false, error: 'topic is required for generateIdeas' })
+          res.status(400).json({ success: false, error: 'topic is required for generateIdeas' })
+          return
         }
         const ideas = await agent.generateIdeas(topic, count, context)
-        return res.status(200).json({ success: true, data: ideas })
+        res.status(200).json({ success: true, data: ideas })
+        return
       }
 
       case 'generateResearch': {
         if (!idea) {
-          return res.status(400).json({ success: false, error: 'idea is required for generateResearch' })
+          res.status(400).json({ success: false, error: 'idea is required for generateResearch' })
+          return
         }
         const researchContent = await agent.generateResearch(idea, depth, context)
-        return res.status(200).json({ success: true, data: { research: researchContent } })
+        res.status(200).json({ success: true, data: { research: researchContent } })
+        return
       }
 
       case 'generateContent': {
         if (!idea || !research) {
-          return res.status(400).json({ success: false, error: 'idea and research are required for generateContent' })
+          res.status(400).json({ success: false, error: 'idea and research are required for generateContent' })
+          return
         }
         const content = await agent.generateContent(idea, research, context)
-        return res.status(200).json({ success: true, data: content })
+        res.status(200).json({ success: true, data: content })
+        return
       }
 
       case 'fullWorkflow': {
         if (!topic) {
-          return res.status(400).json({ success: false, error: 'topic is required for fullWorkflow' })
+          res.status(400).json({ success: false, error: 'topic is required for fullWorkflow' })
+          return
         }
 
         // Step 1: Generate ideas
         const ideas = await agent.generateIdeas(topic, count, context)
         if (!ideas || ideas.length === 0) {
-          return res.status(200).json({
+        res.status(200).json({
             success: true,
             data: {
               step: 'generateIdeas',
@@ -77,6 +86,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<AgentResponse>,
               message: 'No ideas generated. Please try again with a different topic.'
             }
           })
+        return
         }
 
         // Step 2: Use first idea
@@ -105,7 +115,7 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<AgentResponse>,
         const workflowFile = path.join(dataDir, `workflow-${Date.now()}.json`)
         fs.writeFileSync(workflowFile, JSON.stringify(workflowData, null, 2))
 
-        return res.status(200).json({
+        res.status(200).json({
           success: true,
           data: {
             step: 'fullWorkflow',
@@ -117,14 +127,17 @@ const handler = async (req: NextApiRequest, res: NextApiResponse<AgentResponse>,
             savedTo: workflowFile
           }
         })
+        return
       }
 
       default:
-        return res.status(400).json({ success: false, error: `Unknown action: ${action}` })
+        res.status(400).json({ success: false, error: `Unknown action: ${action}` })
+        return
     }
   } catch (err: any) {
     console.error('Agent error:', err)
-    return res.status(500).json({ success: false, error: String(err) })
+    res.status(500).json({ success: false, error: String(err) })
+    return
   }
 }
 

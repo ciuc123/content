@@ -6,7 +6,7 @@ import { NextApiRequest, NextApiResponse } from 'next'
  * Use this in Server Components
  */
 export function getAuthUserId() {
-  const { userId } = getAuth()
+  const { userId } = (getAuth as any)()
   if (!userId) {
     throw new Error('User not authenticated')
   }
@@ -120,7 +120,7 @@ export function withAIAuth(
  */
 export async function getCurrentUser() {
   try {
-    const { userId } = getAuth()
+    const { userId } = (getAuth as any)()
     if (!userId) return null
 
     // You can fetch more user info here if needed

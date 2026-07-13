@@ -6,6 +6,8 @@ type ResponseData = {
   ideas?: any[]
   ok?: boolean
   count?: number
+  inserted?: any[]
+  idea?: any
   error?: string
 }
 

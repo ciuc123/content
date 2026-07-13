@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import fs from 'fs'
 import path from 'path'
 
-const baseDir = path.join(process.cwd(), 'knowledge')
-const files = {
-  cv: path.join(baseDir, 'cv.md'),
-  experience: path.join(baseDir, 'experience.md')
-}
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  const fs = require('fs') as typeof import('fs')
+  const baseDir = path.join(/*turbopackIgnore: true*/ process.cwd(), 'knowledge')
+  const files = {
+    cv: path.join(baseDir, 'cv.md'),
+    experience: path.join(baseDir, 'experience.md')
+  }
   if (req.method === 'GET') {
     try {
       const data: any = {}

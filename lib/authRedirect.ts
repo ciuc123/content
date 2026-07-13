@@ -18,7 +18,7 @@ export function useRedirectAfterAuth() {
 
     // If user just signed in and has a redirect URL, use it
     if (isSignedIn && pathname === '/sign-in') {
-      const redirectUrl = searchParams.get('redirect_url')
+      const redirectUrl = searchParams?.get('redirect_url') ?? null
       if (redirectUrl) {
         // Clear the redirect URL and go to the page
         router.replace(redirectUrl)
