@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
+  import type { NextApiRequest, NextApiResponse } from 'next'
 import { withAdminAuth } from '../../../lib/clerk'
 import { supabaseServer } from '../../../lib/supabase'
 
